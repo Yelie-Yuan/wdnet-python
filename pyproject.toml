@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wdnet_yyl"
+version = "0.0.0.9000"
+authors = [
+  { name = "Yelie Yuan", email = "yelie.yuan@uconn.edu" },
+]
+description = "A package for weighted directed networks"
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: GNU General Public License (GPL)",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "numpy",
+  "pandas",
+  "igraph",
+]
+
+[project.urls]
+"Repository" = "https://github.com/Yelie-Yuan/wdnet-python"
+"Bug Tracker" = "https://github.com/Yelie-Yuan/wdnet-python/issues"

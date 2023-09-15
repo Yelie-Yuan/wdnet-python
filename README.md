@@ -33,3 +33,145 @@ This package is under development.
   - [ ] Bag method
   - [ ] Bagx method
 - [ ] `wdnet` and `rpacontrol` classes
+
+
+# Structure (tentative)
+
+```
+wdnet/
+├── __init__.py
+├── wdnet/
+│   ├── __init__.py
+│   ├── wdnet.py
+│   ├── rpacontrol.py
+│   ├── rpanet.py
+│   ├── dprewire.py
+│   └── _internal/
+│       ├── __init__.py
+│       └── util.py  # Internal Python utility functions
+└── _wdnet/
+    ├── some_cpp_file.cpp
+    ├── another_cpp_file.cpp
+    └── ...
+
+```
+
+## `__init__.py`
+
+```python
+from .wdnet import WDNet
+from .rpacontrol import RPAControl
+from .rpanet import rpanet
+from .dprewire import dprewire, dprewire_range
+```
+
+## `wdnet.py`
+
+```python
+class WDNet:
+    def __init__(self, directed=False, weighted=False, edgeweight=None, edgelist=None, edge_attr=None, node_attr=None):
+        self.directed = directed
+        self.weighted = weighted
+        self.edgeweight = edgeweight if edgeweight is not None else []
+        self.edgelist = edgelist if edgelist is not None else []
+        self.edge_attr = edge_attr if edge_attr is not None else {}
+        self.node_attr = node_attr if node_attr is not None else {}
+
+    def assortcoef(self):
+        # Method implementation
+
+    def centrality(self):
+        # Method implementation
+
+    def save_edgelist(self, file_path):
+        # Save the edgelist to a file or return as an array
+
+    def to_undirected(self):
+        # Convert to an undirected network
+    
+    def to_unweighted(self):
+        # Convert to an unweighted network
+    
+    def to_igraph(self):
+        # Convert to an igraph.Graph object
+
+    def from_igraph(self, igraph_obj):
+        # Convert from an igraph.Graph object
+      
+    def to_edgelist(self):
+        # Convert to an edgelist
+    
+    def to_adj(self, file=None):
+        adj = self.convert_to_adj()
+
+        if file is None:
+            print(adj)
+        else:
+            # Save to file
+            np.save(file, adj, delimiter=",")
+
+    def __str__(self):
+        return f"RPAControl Object: {self.some_setting}, {self.another_setting}"
+```
+
+## `rpacontrol.py`
+
+```python
+class RPAControl:
+    def __init__(self, some_setting, another_setting):
+        # Initialization code here
+    def scenario(self):
+        # Method implementation
+
+    def preference(self):
+        # Method implementation
+
+    def __str__(self):
+        return "Summary of RPA control settings..."
+```
+
+## `rpanet.py`
+
+```python
+def rpanet(arg1, arg2, control=RPAControl()):
+    # Generate WDNet object
+```
+
+## `utils.py`
+
+```python
+def edgelist_to_WDNet(edgelist):
+    # Convert edgelist to WDNet object
+
+def adj_to_WDNet(adj_matrix):
+    # Convert adjacency matrix to WDNet object
+
+def igraph_to_WDNet(igraph_obj):
+    # Convert igraph.Graph object to WDNet object
+
+def WDNet_to_igraph(wdnet_obj):
+    # Convert WDNet object to igraph.Graph object
+```
+
+## `dprewire.py`
+
+```python
+def dprewire(wdnet_obj):
+    # Function logic here
+
+def dprewire_range(wdnet_obj):
+    # Function logic here
+```
+
+## Example Usage
+
+```python
+from wdnet import WDNet, RPAControl, rpanet, dprewire, dprewire_range
+
+# Create and use a WDNet object
+net = WDNet()
+
+# Use dprewire and dprewire_range functions
+dprewire(net)
+dprewire_range(net)
+```

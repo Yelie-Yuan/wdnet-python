@@ -13,8 +13,8 @@ clean:
 install:
 	pip install --editable .
 
-.venv:
-	$(PYTHON) -m venv .venv
+venv:
+	$(PYTHON) -m venv venv
 
 # .PHONY: actvenv
 # actvenv: .venv

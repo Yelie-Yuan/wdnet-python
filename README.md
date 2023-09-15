@@ -48,7 +48,7 @@ wdnet/
 │   ├── dprewire.py
 │   └── _internal/
 │       ├── __init__.py
-│       └── util.py  # Internal Python utility functions
+│       └── utils.py  # Internal Python utility functions
 └── _wdnet/
     ├── some_cpp_file.cpp
     ├── another_cpp_file.cpp
@@ -135,22 +135,6 @@ class RPAControl:
 ```python
 def rpanet(arg1, arg2, control=RPAControl()):
     # Generate WDNet object
-```
-
-## `utils.py`
-
-```python
-def edgelist_to_WDNet(edgelist):
-    # Convert edgelist to WDNet object
-
-def adj_to_WDNet(adj_matrix):
-    # Convert adjacency matrix to WDNet object
-
-def igraph_to_WDNet(igraph_obj):
-    # Convert igraph.Graph object to WDNet object
-
-def WDNet_to_igraph(wdnet_obj):
-    # Convert WDNet object to igraph.Graph object
 ```
 
 ## `dprewire.py`

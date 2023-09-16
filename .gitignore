@@ -3,4 +3,5 @@
 __pycache__
 dist
 build
+src/wdnet/_*.c
 test.ipynb

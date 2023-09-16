@@ -14,6 +14,7 @@ clean:
 .PHONY: install
 install:
 	pip install .
+	python -c "import wdnet; wdnet.hello()"
 
 venv:
 	$(PYTHON) -m venv venv

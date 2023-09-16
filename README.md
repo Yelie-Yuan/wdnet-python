@@ -60,7 +60,7 @@ wdnet/
 
 ```python
 from .wdnet import WDNet
-from .rpacontrol import RPAControl
+from .rpacontrol import RPACtrl
 from .rpanet import rpanet
 from .dprewire import dprewire, dprewire_range
 ```
@@ -111,13 +111,13 @@ class WDNet:
             np.save(file, adj, delimiter=",")
 
     def __str__(self):
-        return f"RPAControl Object: {self.some_setting}, {self.another_setting}"
+        return f"RPACtrl Object: {self.some_setting}, {self.another_setting}"
 ```
 
 ## `rpacontrol.py`
 
 ```python
-class RPAControl:
+class RPACtrl:
     def __init__(self, some_setting, another_setting):
         # Initialization code here
     def scenario(self):
@@ -133,7 +133,7 @@ class RPAControl:
 ## `rpanet.py`
 
 ```python
-def rpanet(arg1, arg2, control=RPAControl()):
+def rpanet(arg1, arg2, control=RPACtrl()):
     # Generate WDNet object
 ```
 
@@ -150,7 +150,7 @@ def dprewire_range(wdnet_obj):
 ## Example Usage
 
 ```python
-from wdnet import WDNet, RPAControl, rpanet, dprewire, dprewire_range
+from wdnet import WDNet, RPACtrl, rpanet, dprewire, dprewire_range
 
 # Create and use a WDNet object
 net = WDNet()

@@ -8,13 +8,16 @@ build:
 
 .PHONY: clean
 clean:
-	rm -rf build dist src/*.egg-info src/wdnet/_*.c
+	rm -rf build dist src/*.egg-info src/wdnet/_*.c src/wdnet/__pycache__
 	pip uninstall -y $(PACKAGE)
 
 .PHONY: install
 install:
 	pip install .
-	python -c "import wdnet; wdnet.hello()"
+	python -c "import wdnet; \
+		wdnet.hello(); \
+		print(dir(wdnet)); \
+		print(wdnet.fib(10));"
 
 venv:
 	$(PYTHON) -m venv venv

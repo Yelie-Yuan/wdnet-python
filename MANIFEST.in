@@ -1,3 +1,5 @@
 include src/wdnet/_*.pyx
-include src/_wdnet/*
+exclude src/wdnet/_*.c
+include src/_wdnet/*.c
+include src/_wdnet/*.h
 include MANIFEST.in

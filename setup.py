@@ -6,8 +6,8 @@ import glob
 ext_data = {
     'wdnet._fib': {
         'sources': [
-            os.path.join('./src/wdnet', '_fib.pyx'),
-            os.path.join('./src/_wdnet', 'fib.c')
+            os.path.join('src/wdnet', '_fib.pyx'),
+            os.path.join('src/_wdnet', 'fib.c')
         ]
     }
 }
@@ -43,7 +43,7 @@ setup(
     ],
     packages=find_packages(where="src"),
     package_dir={"": "src"},
-    include_package_data=True,
+    # include_package_data=True,
     python_requires='>=3.10',
     install_requires=[
         'numpy',

@@ -37,6 +37,8 @@ This package is under development.
 
 # Structure (tentative)
 
+## Directory Structure
+
 ```
 wdnet/
 ├── __init__.py
@@ -56,13 +58,30 @@ wdnet/
 
 ```
 
+## Classes
+
++ WDNet
++ RPACtrl
+
+## Modules
+
++ rewire
+
+## Functions
+
++ rpanet
+
+
+
+# Files
+
 ## `__init__.py`
 
 ```python
 from .wdnet import WDNet
 from .rpacontrol import RPACtrl
 from .rpanet import rpanet
-from .dprewire import dprewire, dprewire_range
+import rewire
 ```
 
 ## `wdnet.py`
@@ -83,9 +102,6 @@ class WDNet:
     def centrality(self):
         # Method implementation
 
-    def save_edgelist(self, file_path):
-        # Save the edgelist to a file or return as an array
-
     def to_undirected(self):
         # Convert to an undirected network
     
@@ -97,6 +113,12 @@ class WDNet:
 
     def from_igraph(self, igraph_obj):
         # Convert from an igraph.Graph object
+
+    def from_edgelist(self, edgelist, directed=False, edgeweight=None):
+        # Convert from an edgelist
+    
+    def from_adj(self, adj, directed=False, weighted=True):
+        # Convert from an adjacency matrix
       
     def to_edgelist(self):
         # Convert to an edgelist
@@ -114,13 +136,23 @@ class WDNet:
         return f"RPACtrl Object: {self.some_setting}, {self.another_setting}"
 ```
 
-## `rpacontrol.py`
+## `rpacontrol.pyx`
 
 ```python
 class RPACtrl:
     def __init__(self, some_setting, another_setting):
         # Initialization code here
+    
     def scenario(self):
+        # Method implementation
+
+    def edgeweight(self):
+        # Method implementation
+    
+    def newedge(self):
+        # Method implementation
+    
+    def reciprocal(self):
         # Method implementation
 
     def preference(self):
@@ -130,14 +162,14 @@ class RPACtrl:
         return "Summary of RPA control settings..."
 ```
 
-## `rpanet.py`
+## `rpanet.pyx`
 
 ```python
 def rpanet(arg1, arg2, control=RPACtrl()):
     # Generate WDNet object
 ```
 
-## `dprewire.py`
+## `rewire.pyx`
 
 ```python
 def dprewire(wdnet_obj):
@@ -145,17 +177,33 @@ def dprewire(wdnet_obj):
 
 def dprewire_range(wdnet_obj):
     # Function logic here
+
+def sprewire(wdnet_obj):
+    # Function logic here
+
+def sprewire_range(wdnet_obj):
+    # Function logic here
 ```
+
+## `utils.pyx` and `utils.cpp` are omitted for now
 
 ## Example Usage
 
 ```python
-from wdnet import WDNet, RPACtrl, rpanet, dprewire, dprewire_range
+from wdnet import WDNet, RPACtrl, rpanet, rewire
 
 # Create and use a WDNet object
 net = WDNet()
+net.assortcoef()
+net.centrality()
+net.to_undirected()
+net.to_igraph()
+net.to_edgelist()
 
 # Use dprewire and dprewire_range functions
-dprewire(net)
-dprewire_range(net)
+rewire.dprewire(net)
+rewire.dprewire_range(net)
+
+# Generate a PA network
+rpanet(100, control=RPACtrl(), initial_network=WDNet())
 ```

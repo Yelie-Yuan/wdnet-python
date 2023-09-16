@@ -1,17 +1,19 @@
 PYTHON = python3
+PACKAGE = wdnet
 
 .PHONY: build
 build:
-	pip install --upgrade build
-	$(PYTHON) -m build
+	# pip install --upgrade build
+	$(PYTHON) setup.py sdist bdist_wheel
 
 .PHONY: clean
 clean:
-	rm -rf dist *.egg-info
+	rm -rf build dist src/*.egg-info src/wdnet/_*.c
+	pip uninstall -y $(PACKAGE)
 
 .PHONY: install
 install:
-	pip install --editable .
+	pip install .
 
 venv:
 	$(PYTHON) -m venv venv

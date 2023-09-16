@@ -1,2 +1,2 @@
-def wdnet_hello():
-    print("Hello from wdnet")
+def hello():
+    print("Hello from wdnet!")

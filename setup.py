@@ -1,0 +1,56 @@
+from setuptools import setup, find_packages, Extension
+from Cython.Build import cythonize
+import os
+
+directory_path = os.path.dirname(
+    os.path.abspath(__file__)
+)
+
+ext_data = {
+    'wdnet._fib': {
+        'sources': [
+            os.path.join(directory_path, 'src/wdnet', '_fib.pyx'),
+            os.path.join(directory_path, 'src/_wdnet', 'fib.c')
+        ]
+    }
+}
+
+extensions = []
+
+for name, data in ext_data.items():
+    sources = data['sources']
+    obj = Extension(
+        name,
+        sources=sources,
+    )
+    extensions.append(obj)
+
+setup(
+    name='wdnet',
+    version='0.0.0.9000',
+    author='Yelie Yuan',
+    author_email='yelie.yuan@uconn.edu',
+    description='A package for weighted directed networks',
+    long_description=open('README.md').read(),
+    long_description_content_type='text/markdown',
+    url='https://github.com/Yelie-Yuan/wdnet-python',
+    project_urls={
+        'Bug Tracker': 'https://github.com/Yelie-Yuan/wdnet-python/issues',
+    },
+    license='GNU General Public License (GPL)',
+    classifiers=[
+        'Development Status :: 1 - Planning',
+        'Programming Language :: Python :: 3',
+        'License :: OSI Approved :: GNU General Public License (GPL)',
+        'Operating System :: OS Independent',
+    ],
+    packages=find_packages(where="src"),
+    package_dir={"": "src"},
+    python_requires='>=3.10',
+    install_requires=[
+        'numpy',
+        'pandas',
+        'igraph',
+    ],
+    ext_modules=cythonize(extensions, compiler_directives={'language_level': "3"})
+)

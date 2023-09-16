@@ -1,0 +1,3 @@
+include src/wdnet/_*.pyx
+include src/_wdnet/*
+include MANIFEST.in

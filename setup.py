@@ -1,16 +1,13 @@
 from setuptools import setup, find_packages, Extension
 from Cython.Build import cythonize
 import os
-
-directory_path = os.path.dirname(
-    os.path.abspath(__file__)
-)
+import glob
 
 ext_data = {
     'wdnet._fib': {
         'sources': [
-            os.path.join(directory_path, 'src/wdnet', '_fib.pyx'),
-            os.path.join(directory_path, 'src/_wdnet', 'fib.c')
+            os.path.join('./src/wdnet', '_fib.pyx'),
+            os.path.join('./src/_wdnet', 'fib.c')
         ]
     }
 }
@@ -31,7 +28,7 @@ setup(
     author='Yelie Yuan',
     author_email='yelie.yuan@uconn.edu',
     description='A package for weighted directed networks',
-    long_description=open('README.md').read(),
+    # long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/Yelie-Yuan/wdnet-python',
     project_urls={
@@ -46,6 +43,7 @@ setup(
     ],
     packages=find_packages(where="src"),
     package_dir={"": "src"},
+    include_package_data=True,
     python_requires='>=3.10',
     install_requires=[
         'numpy',

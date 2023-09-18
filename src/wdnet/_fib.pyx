@@ -1,6 +1,8 @@
 cdef extern from "../_wdnet/fib.h":
-    double cfib(int n)
+    void cfib(int n, int&ret)
 
 def fib(n):
     ''' Returns the nth Fibonacci number.'''
-    return cfib(n)
+    cdef int ret
+    cfib(n, ret)
+    return "result is " + str(ret)

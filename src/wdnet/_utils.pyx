@@ -1,6 +1,7 @@
 # Import C++ standard library types using cimport
 from libcpp.vector cimport vector
 from libcpp.pair cimport pair
+import numpy as np
 
 # Import the C++ function declaration from the header file
 cdef extern from "../_wdnet/utils.h":
@@ -20,8 +21,8 @@ def node_strength_py(edgelist, edgeweight):
         snode, tnode, edgeweight_cpp, nnode)
     
     # Convert the C++ vectors to Python lists
-    outs = list(ret.first)
-    ins = list(ret.second)
+    outs = np.array(ret.first)
+    ins = np.array(ret.second)
 
     # Return the results
     return outs, ins

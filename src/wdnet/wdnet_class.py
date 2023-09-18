@@ -5,7 +5,41 @@ import warnings
 from ._utils import node_strength_py
 
 
-def check_wdnet_attributes(edgelist, edgeweight, directed, edge_attr, node_attr):
+def weighted_cor(x, y, w):
+    # Calculate the weighted means
+    mean_x = np.average(x, weights=w)
+    mean_y = np.average(y, weights=w)
+
+    # Calculate the weighted covariance and variances
+    cov_xy = np.sum(w * (x - mean_x) * (y - mean_y)) / np.sum(w)
+    var_x = np.sum(w * (x - mean_x) ** 2) / np.sum(w)
+    var_y = np.sum(w * (y - mean_y) ** 2) / np.sum(w)
+    if var_x == 0 or var_y == 0 or np.isnan(var_x) or np.isnan(var_y):
+        return None
+
+    return cov_xy / np.sqrt(var_x * var_y)
+
+
+def is_WDNet(netwk):
+    check_wdnet_inputs(
+        edgelist=netwk.edgelist,
+        edgeweight=netwk.edge_attr["weight"],
+        directed=netwk.directed,
+        edge_attr=netwk.edge_attr,
+        node_attr=netwk.node_attr,
+    )
+    outs, ins = node_strength_py(netwk.edgelist, netwk.edge_attr["weight"].to_numpy())
+    if netwk.directed:
+        difference = np.sum(np.abs(outs - netwk.node_attr["outs"].to_numpy())) + np.sum(
+            np.abs(ins - netwk.node_attr["ins"])
+        )
+    else:
+        difference = np.sum(np.abs(outs + ins - netwk.node_attr["s"].to_numpy()))
+
+    return difference <= 1e-5
+
+
+def check_wdnet_inputs(edgelist, edgeweight, directed, edge_attr, node_attr):
     # Check for directed to be bool
     if not isinstance(directed, bool):
         raise ValueError("The 'directed' attribute must be of type bool.")
@@ -14,12 +48,11 @@ def check_wdnet_attributes(edgelist, edgeweight, directed, edge_attr, node_attr)
     if len(edgelist) < 1:
         raise ValueError("'edgelist' must contain at least one element.")
 
-    # Check if edgelist is a list of tuples
-    # if not all(isinstance(x, tuple) for x in edgelist):
-    #     raise ValueError("'edgelist' must be a list of tuples.")
-
     # Check if all elements in each tuple in edgelist are nonnegative integers
-    if not all(len(edge) == 2 and all(isinstance(i, int) and i >= 0 for i in edge) for edge in edgelist):
+    if not all(
+        len(edge) == 2 and all(isinstance(i, int) and i >= 0 for i in edge)
+        for edge in edgelist
+    ):
         raise ValueError("Each edge must be represented by two nonnegative integers.")
 
     # Check if the lengths of edgelist and edgeweight are the same
@@ -32,7 +65,9 @@ def check_wdnet_attributes(edgelist, edgeweight, directed, edge_attr, node_attr)
     # Check if edge_attr is a DataFrame or None
     if edge_attr is not None:
         if not isinstance(edge_attr, DataFrame):
-            raise ValueError("The 'edge_attr' attribute must be of type DataFrame or None.")
+            raise ValueError(
+                "The 'edge_attr' attribute must be of type DataFrame or None."
+            )
         if edge_attr.shape[0] != len(edgelist):
             raise ValueError(
                 "The number of rows in 'edge_attr' must be the same as the length of 'edgelist'."
@@ -41,16 +76,19 @@ def check_wdnet_attributes(edgelist, edgeweight, directed, edge_attr, node_attr)
     # Check if node_attr is a DataFrame or None
     if node_attr is not None:
         if not isinstance(node_attr, DataFrame):
-            raise ValueError("The 'node_attr' attribute must be of type DataFrame or None.")
+            raise ValueError(
+                "The 'node_attr' attribute must be of type DataFrame or None."
+            )
         max_node = max(
             x for edge in edgelist for x in edge
         )  # maximum node value in edgelist
-        if node_attr.shape[0] != max_node:
+        if node_attr.shape[0] != max_node + 1:
             raise ValueError(
-                "The number of rows in 'node_attr' must be the same as the number of nodes (maximum value) in 'edgelist'."
+                "The number of rows in 'node_attr' should be (maximum value in 'edgelist') + 1."
             )
-    
+
     return True
+
 
 class WDNet:
     """
@@ -72,13 +110,13 @@ class WDNet:
         edgeweight: Optional[Union[List[float], np.ndarray]] = None,
         edge_attr: Optional[DataFrame] = None,
         node_attr: Optional[DataFrame] = None,
-    ): 
+    ):
         if isinstance(edgelist, np.ndarray):
             edgelist = edgelist.tolist()
-        # if isinstance(edgeweight, np.ndarray):
-        #     edgeweight = edgeweight.tolist()
+        if isinstance(edgeweight, np.ndarray):
+            edgeweight = edgeweight.tolist()
         # Check for required attributes
-        check_wdnet_attributes(
+        check_wdnet_inputs(
             edgelist=edgelist,
             edgeweight=edgeweight,
             directed=directed,
@@ -96,33 +134,41 @@ class WDNet:
 
         # Combine edgeweight into edge_attr
         self.edge_attr = DataFrame(index=range(len(edgelist)))
-        self.edge_attr['weight'] = edgeweight
+        self.edge_attr["weight"] = edgeweight
 
         if edge_attr is not None:
-            if 'weight' in edge_attr.columns:
-                warnings.warn("'edgeweight' has overwritten the 'weight' column in 'edge_attr'.")
+            if "weight" in edge_attr.columns:
+                warnings.warn(
+                    "'edgeweight' has overwritten the 'weight' column in 'edge_attr'."
+                )
             self.edge_attr = edge_attr.combine_first(self.edge_attr)
 
         # Compute node strengths (or degrees) and store them in node_attr
         outs, ins = node_strength_py(edgelist, edgeweight)
         self.node_attr = DataFrame(index=range(len(outs)))
         if self.directed:
-            self.node_attr['outs'] = outs
-            self.node_attr['ins'] = ins
+            self.node_attr["outs"] = outs
+            self.node_attr["ins"] = ins
             if node_attr is not None:
-                if 'outs' in node_attr.columns:
-                    warnings.warn("Out-strength has overwritten the 'outs' column in 'node_attr'.")
-                    node_attr = node_attr.drop(columns=['outs'])
-                if 'ins' in node_attr.columns:
-                    warnings.warn("In-strength has overwritten the 'ins' column in 'node_attr'.")
-                    node_attr = node_attr.drop(columns=['ins'])
+                if "outs" in node_attr.columns:
+                    warnings.warn(
+                        "Out-strength has overwritten the 'outs' column in 'node_attr'."
+                    )
+                    node_attr = node_attr.drop(columns=["outs"])
+                if "ins" in node_attr.columns:
+                    warnings.warn(
+                        "In-strength has overwritten the 'ins' column in 'node_attr'."
+                    )
+                    node_attr = node_attr.drop(columns=["ins"])
                 self.node_attr = self.node_attr.combine(node_attr)
         else:
-            self.node_attr['s'] = outs + ins
+            self.node_attr["s"] = outs + ins
             if node_attr is not None:
-                if 's' in node_attr.columns:
-                    warnings.warn("Strength has overwritten the 's' column in 'node_attr'.")
-                    node_attr = node_attr.drop(columns=['s'])
+                if "s" in node_attr.columns:
+                    warnings.warn(
+                        "Strength has overwritten the 's' column in 'node_attr'."
+                    )
+                    node_attr = node_attr.drop(columns=["s"])
                 self.node_attr = self.node_attr.combine(node_attr)
 
     def is_WDNet(self):
@@ -142,26 +188,67 @@ class WDNet:
 
         Returns:
         -------
-        Union[List[float], float]
-            A list of floats for directed networks and a single float for undirected networks.
+        Union[Dict[float], float]
+            A dictionary of floats for directed networks and a single float for undirected networks.
 
         Examples:
         --------
-        >>> wdnet = WDNet.from_edgelist([(1, 2), (2, 3), (3, 4)], directed=True)
+        >>> wdnet = WDNet(edgelist=[(1, 2), (2, 3), (3, 4)], directed=False)
         >>> wdnet.assortcoef()
         """
-        pass
-        # return assortcoef_cy(
-        #     self.weighted, self.directed, self.edgelist, self.edgeweight
-        # )
+        src, tar = map(list, zip(*self.edgelist))
+        if self.directed:
+            return {
+                "outout": weighted_cor(
+                    self.node_attr.loc[src, "outs"].to_numpy(),
+                    self.node_attr.loc[tar, "outs"].to_numpy(),
+                    self.edge_attr["weight"].to_numpy(),
+                ),
+                "outin": weighted_cor(
+                    self.node_attr.loc[src, "outs"].to_numpy(),
+                    self.node_attr.loc[tar, "ins"].to_numpy(),
+                    self.edge_attr["weight"].to_numpy(),
+                ),
+                "inout": weighted_cor(
+                    self.node_attr.loc[src, "ins"].to_numpy(),
+                    self.node_attr.loc[tar, "outs"].to_numpy(),
+                    self.edge_attr["weight"].to_numpy(),
+                ),
+                "inin": weighted_cor(
+                    self.node_attr.loc[src, "ins"].to_numpy(),
+                    self.node_attr.loc[tar, "ins"].to_numpy(),
+                    self.edge_attr["weight"].to_numpy(),
+                ),
+            }
+        else:
+            return weighted_cor(
+                self.node_attr.loc[src + tar, "s"].to_numpy(),
+                self.node_attr.loc[tar + src, "s"].to_numpy(),
+                np.concatenate(
+                    [
+                        self.edge_attr["weight"].to_numpy(),
+                        self.edge_attr["weight"].to_numpy(),
+                    ]
+                ),
+            )
 
     def centrality(self):
         # Method implementation
         pass
 
     def to_undirected(self):
-        # Convert to an undirected network
-        pass
+        if not self.directed:
+            return self
+
+        self.directed = False
+        self.node_attr["s"] = (
+            self.node_attr["outs"].to_numpy() + self.node_attr["ins"].to_numpy()
+        )
+        self.node_attr = self.node_attr.drop(columns=["outs", "ins"])
+
+        is_WDNet(self)
+
+        return self
 
     def to_unweighted(self):
         # Convert to an unweighted network
@@ -174,11 +261,6 @@ class WDNet:
     @classmethod
     def from_igraph(self, igraph_obj):
         # Convert from an igraph.Graph object
-        pass
-
-    @classmethod
-    def from_edgelist(self, edgelist, directed=False, edgeweight=None):
-        # Convert from an edgelist
         pass
 
     @classmethod

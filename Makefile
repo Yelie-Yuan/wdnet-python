@@ -14,14 +14,7 @@ clean:
 .PHONY: install
 install:
 	pip install .
-	python -c "import wdnet; \
-		wdnet.hello(); \
-		print(dir(wdnet)); \
-		print(wdnet.fib(10));\
-		from wdnet._utils import node_strength_py as s;\
-		print(s([(1, 2), (2, 3)], [0.5, 10]));\
-		from wdnet import WDNet;\
-		WDNet(edgelist=[(1, 2), (2, 3)], edgeweight=[2, 10])"
+	$(PYTHON) test_on_install.py
 
 venv:
 	$(PYTHON) -m venv venv

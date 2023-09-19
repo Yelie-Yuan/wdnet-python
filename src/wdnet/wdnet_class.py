@@ -36,7 +36,11 @@ def is_WDNet(netwk):
     else:
         difference = np.sum(np.abs(outs + ins - netwk.node_attr["s"].to_numpy()))
 
-    return difference <= 1e-5
+    if difference > 1e-5:
+        raise ValueError(
+            "The node strengths (or degrees) in 'node_attr' are not consistent with 'edgelist' and 'edgeweight'."
+        )
+    return True
 
 
 def check_wdnet_inputs(edgelist, edgeweight, directed, edge_attr, node_attr):
@@ -251,8 +255,18 @@ class WDNet:
         return self
 
     def to_unweighted(self):
-        # Convert to an unweighted network
-        pass
+        self.weighted = False
+        self.edge_attr["weight"] = [1] * len(self.edgelist)
+        outs, ins = node_strength_py(self.edgelist, self.edge_attr["weight"].to_numpy())
+        if self.directed:
+            self.node_attr["outs"] = outs
+            self.node_attr["ins"] = ins
+        else:
+            self.node_attr["s"] = outs + ins
+        
+        is_WDNet(self)
+
+        return self
 
     def to_igraph(self):
         # Convert to an igraph.Graph object
@@ -268,7 +282,7 @@ class WDNet:
         # Convert from an adjacency matrix
         pass
 
-    def to_edgelist(self):
+    def to_edgelist(self, file=None):
         # Convert to an edgelist
         pass
 

@@ -61,80 +61,37 @@ wdnet/
 ## Classes
 
 + WDNet
+  - assortcoef()
+  - centrality()
+  - to_undirected()
+  - to_unweighted()
+  - to_igraph()
+  - from_igraph()
+  - from_edgelist()
+  - from_adj()
+  - to_edgelist()
+  - to_adj()
 + RPACtrl
+  - scenario()
+  - edgeweight()
+  - newedge()
+  - reciprocal()
+  - preference()
 
 ## Modules
 
 + rewire
+  - dprewire()
+  - dprewire_range()
+  - sprewire()
+  - sprewire_range()
 
 ## Functions
 
 + rpanet
 
 
-
 # Files
-
-## `__init__.py`
-
-```python
-from .wdnet import WDNet
-from .rpacontrol import RPACtrl
-from .rpanet import rpanet
-import rewire
-```
-
-## `wdnet.py`
-
-```python
-class WDNet:
-    def __init__(self, directed=False, weighted=False, edgeweight=None, edgelist=None, edge_attr=None, node_attr=None):
-        self.directed = directed
-        self.weighted = weighted
-        self.edgeweight = edgeweight if edgeweight is not None else []
-        self.edgelist = edgelist if edgelist is not None else []
-        self.edge_attr = edge_attr if edge_attr is not None else {}
-        self.node_attr = node_attr if node_attr is not None else {}
-
-    def assortcoef(self):
-        # Method implementation
-
-    def centrality(self):
-        # Method implementation
-
-    def to_undirected(self):
-        # Convert to an undirected network
-    
-    def to_unweighted(self):
-        # Convert to an unweighted network
-    
-    def to_igraph(self):
-        # Convert to an igraph.Graph object
-
-    def from_igraph(self, igraph_obj):
-        # Convert from an igraph.Graph object
-
-    def from_edgelist(self, edgelist, directed=False, edgeweight=None):
-        # Convert from an edgelist
-    
-    def from_adj(self, adj, directed=False, weighted=True):
-        # Convert from an adjacency matrix
-      
-    def to_edgelist(self):
-        # Convert to an edgelist
-    
-    def to_adj(self, file=None):
-        adj = self.convert_to_adj()
-
-        if file is None:
-            print(adj)
-        else:
-            # Save to file
-            np.save(file, adj, delimiter=",")
-
-    def __str__(self):
-        return f"RPACtrl Object: {self.some_setting}, {self.another_setting}"
-```
 
 ## `rpacontrol.pyx`
 
@@ -193,7 +150,7 @@ def sprewire_range(wdnet_obj):
 from wdnet import WDNet, RPACtrl, rpanet, rewire
 
 # Create and use a WDNet object
-net = WDNet()
+net = WDNet(edgelist=[(0, 1), (1, 2), [2, 0]], edgeweight=[1, 2, 5])
 net.assortcoef()
 net.centrality()
 net.to_undirected()

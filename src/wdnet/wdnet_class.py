@@ -1,5 +1,6 @@
 from typing import List, Tuple, Dict, Optional, Union
 from pandas import DataFrame
+from igraph import Graph
 import numpy as np
 import warnings
 from ._utils import node_strength_py
@@ -21,6 +22,7 @@ def weighted_cor(x, y, w):
 
 
 def is_WDNet(netwk):
+    # Check for required attributes
     check_wdnet_inputs(
         edgelist=netwk.edgelist,
         edgeweight=netwk.edge_attr["weight"],
@@ -28,6 +30,7 @@ def is_WDNet(netwk):
         edge_attr=netwk.edge_attr,
         node_attr=netwk.node_attr,
     )
+    # Check if the node strengths (or degrees) are consistent with edgelist and edgeweight
     outs, ins = node_strength_py(netwk.edgelist, netwk.edge_attr["weight"].to_numpy())
     if netwk.directed:
         difference = np.sum(np.abs(outs - netwk.node_attr["outs"].to_numpy())) + np.sum(
@@ -52,12 +55,24 @@ def check_wdnet_inputs(edgelist, edgeweight, directed, edge_attr, node_attr):
     if len(edgelist) < 1:
         raise ValueError("'edgelist' must contain at least one element.")
 
-    # Check if all elements in each tuple in edgelist are nonnegative integers
-    if not all(
-        len(edge) == 2 and all(isinstance(i, int) and i >= 0 for i in edge)
-        for edge in edgelist
-    ):
-        raise ValueError("Each edge must be represented by two nonnegative integers.")
+    if not all(len(edge) == 2 for edge in edgelist):
+        raise ValueError("All edges in 'edgelist' must have length 2.")
+    tmp = set(x for edge in edgelist for x in edge)
+    nnode = len(tmp)
+    # Nodes must be consecutive integers starting from 0
+    if not nnode == np.max(list(tmp)) + 1 or not all(isinstance(i, int) for i in tmp):
+        raise ValueError("Nodes must be consecutive integers starting from 0.")
+
+    # Check if node_attr is a DataFrame or None
+    if node_attr is not None:
+        if not isinstance(node_attr, DataFrame):
+            raise ValueError(
+                "The 'node_attr' attribute must be of type DataFrame or None."
+            )
+        if node_attr.shape[0] != nnode:
+            raise ValueError(
+                "The number of rows in 'node_attr' should be (maximum value in 'edgelist') + 1."
+            )
 
     # Check if the lengths of edgelist and edgeweight are the same
     if edgeweight is not None:
@@ -76,21 +91,6 @@ def check_wdnet_inputs(edgelist, edgeweight, directed, edge_attr, node_attr):
             raise ValueError(
                 "The number of rows in 'edge_attr' must be the same as the length of 'edgelist'."
             )
-
-    # Check if node_attr is a DataFrame or None
-    if node_attr is not None:
-        if not isinstance(node_attr, DataFrame):
-            raise ValueError(
-                "The 'node_attr' attribute must be of type DataFrame or None."
-            )
-        max_node = max(
-            x for edge in edgelist for x in edge
-        )  # maximum node value in edgelist
-        if node_attr.shape[0] != max_node + 1:
-            raise ValueError(
-                "The number of rows in 'node_attr' should be (maximum value in 'edgelist') + 1."
-            )
-
     return True
 
 
@@ -164,7 +164,7 @@ class WDNet:
                         "In-strength has overwritten the 'ins' column in 'node_attr'."
                     )
                     node_attr = node_attr.drop(columns=["ins"])
-                self.node_attr = self.node_attr.combine(node_attr)
+                self.node_attr = self.node_attr.combine_first(node_attr)
         else:
             self.node_attr["s"] = outs + ins
             if node_attr is not None:
@@ -173,7 +173,7 @@ class WDNet:
                         "Strength has overwritten the 's' column in 'node_attr'."
                     )
                     node_attr = node_attr.drop(columns=["s"])
-                self.node_attr = self.node_attr.combine(node_attr)
+                self.node_attr = self.node_attr.combine_first(node_attr)
 
     def is_WDNet(self):
         # Check for required attributes
@@ -263,22 +263,45 @@ class WDNet:
             self.node_attr["ins"] = ins
         else:
             self.node_attr["s"] = outs + ins
-        
+
         is_WDNet(self)
 
         return self
 
     def to_igraph(self):
-        # Convert to an igraph.Graph object
-        pass
+        g = Graph.TupleList(
+            edges=self.edgelist,
+            directed=self.directed,
+        )
+        for attr in self.edge_attr.columns:
+            g.es[attr] = self.edge_attr[attr].tolist()
+        for attr in self.node_attr.columns:
+            g.vs[attr] = self.node_attr[attr].tolist()
+        return g
 
     @classmethod
-    def from_igraph(self, igraph_obj):
+    def from_igraph(self, g):
         # Convert from an igraph.Graph object
-        pass
+        edgelist = g.get_edgelist()
+        directed = g.is_directed()
+        if "weight" in g.es.attributes():
+            edgeweight = g.es["weight"]
+        edge_attr = DataFrame(index=range(len(edgelist)))
+        for attr in g.es.attributes():
+            edge_attr[attr] = g.es[attr]
+        node_attr = DataFrame(index=range(g.vcount()))
+        for attr in g.vs.attributes():
+            node_attr[attr] = g.vs[attr]
+        return WDNet(
+            edgelist=edgelist,
+            directed=directed,
+            edgeweight=edgeweight,
+            edge_attr=edge_attr,
+            node_attr=node_attr,
+        )
 
     @classmethod
-    def from_adj(self, adj, directed=False, weighted=True):
+    def from_adj(self, adj, directed=True, weighted=True):
         # Convert from an adjacency matrix
         pass
 

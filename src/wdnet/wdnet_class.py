@@ -5,7 +5,7 @@ from copy import deepcopy
 import numpy as np
 
 # import warnings
-from ._utils import node_strength_py
+from .utils_cy import node_strength_cy
 
 
 def weighted_cor(x, y, w):
@@ -33,7 +33,7 @@ def is_WDNet(netwk):
         node_attr=netwk.node_attr,
     )
     # Check if the node strengths (or degrees) are consistent with edgelist and edgeweight
-    outs, ins = node_strength_py(netwk.edgelist, netwk.edge_attr["weight"].to_numpy())
+    outs, ins = node_strength_cy(netwk.edgelist, netwk.edge_attr["weight"].to_numpy())
     if netwk.directed:
         difference = np.sum(np.abs(outs - netwk.node_attr["outs"].to_numpy())) + np.sum(
             np.abs(ins - netwk.node_attr["ins"])
@@ -150,7 +150,7 @@ class WDNet:
             self.edge_attr = edge_attr.combine_first(self.edge_attr)
 
         # Compute node strengths (or degrees) and store them in node_attr
-        outs, ins = node_strength_py(edgelist, edgeweight)
+        outs, ins = node_strength_cy(edgelist, edgeweight)
         self.node_attr = DataFrame(index=range(len(outs)))
         if self.directed:
             self.node_attr["outs"] = outs
@@ -175,7 +175,7 @@ class WDNet:
                     node_attr = node_attr.drop(columns=["s"])
                 self.node_attr = self.node_attr.combine_first(node_attr)
 
-    def is_WDNet(self):
+    def is_WDNet(self) -> bool:
         # Check for required attributes
         if not all(hasattr(self, attr) for attr in ["edgelist", "edgeweight"]):
             return False
@@ -240,7 +240,7 @@ class WDNet:
         # Method implementation
         pass
 
-    def to_undirected(self):
+    def to_undirected(self) -> "WDNet":
         """
         Convert to an undirected network.
 
@@ -261,7 +261,7 @@ class WDNet:
 
         return self
 
-    def to_unweighted(self):
+    def to_unweighted(self) -> "WDNet":
         """
         Convert to an unweighted network.
 
@@ -271,7 +271,7 @@ class WDNet:
         """
         self.weighted = False
         self.edge_attr["weight"] = [1] * len(self.edgelist)
-        outs, ins = node_strength_py(self.edgelist, self.edge_attr["weight"].to_numpy())
+        outs, ins = node_strength_cy(self.edgelist, self.edge_attr["weight"].to_numpy())
         if self.directed:
             self.node_attr["outs"] = outs
             self.node_attr["ins"] = ins
@@ -282,7 +282,7 @@ class WDNet:
 
         return self
 
-    def to_igraph(self):
+    def to_igraph(self) -> Graph:
         """
         Convert to an igraph.Graph object.
 
@@ -301,7 +301,7 @@ class WDNet:
         return g
 
     @classmethod
-    def from_igraph(self, g):
+    def from_igraph(self, g) -> "WDNet":
         """
         Convert from an igraph.Graph object.
 
@@ -333,7 +333,7 @@ class WDNet:
         )
 
     @classmethod
-    def from_adjacency(self, adj, directed=True, weighted=True):
+    def from_adjacency(self, adj, directed=True, weighted=True) -> "WDNet":
         """
         Convert from an adjacency matrix represented as a n by n numpy array,
         where n is the number of nodes.
@@ -405,7 +405,7 @@ class WDNet:
         else:
             np.savetxt(file, adj, delimiter=",")
 
-    def copy(self):
+    def copy(self) -> "WDNet":
         """
         Return a copy of the network.
 
@@ -416,4 +416,10 @@ class WDNet:
         return deepcopy(self)
 
     def __str__(self):
-        return f"WDNet Object: directed={self.directed}, weighted={self.weighted}"
+        """
+        Return a summary of the network, including the number of nodes and edges.
+        """
+        return (f"WDNet object: directed={self.directed}, "
+                f"weighted={self.weighted}, "
+                f"number of nodes={self.node_attr.shape[0]}, "
+                f"number of edges={len(self.edgelist)}.")

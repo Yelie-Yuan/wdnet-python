@@ -4,17 +4,17 @@ import os
 import glob
 
 ext_data = {
-    "wdnet._fib": {
+    "wdnet.fib_cy": {
         "sources": [
             os.path.join("src/_wdnet", "fib.cpp"),
-            os.path.join("src/wdnet", "_fib.pyx"),
+            os.path.join("src/wdnet", "fib_cy.pyx"),
         ],
         "language": "c++"
     },
-    "wdnet._utils": {
+    "wdnet.utils_cy": {
         "sources": [
             os.path.join("src/_wdnet", "utils.cpp"),
-            os.path.join("src/wdnet", "_utils.pyx"),
+            os.path.join("src/wdnet", "utils_cy.pyx"),
         ],
         "language": "c++"
     },

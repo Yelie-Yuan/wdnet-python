@@ -1,4 +1,4 @@
-from ._fib import fib
+from .fib_cy import fib
 
 def hello():
     print("Hello from wdnet!")

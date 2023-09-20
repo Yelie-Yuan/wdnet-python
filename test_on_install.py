@@ -104,3 +104,7 @@ netwk0.to_edgelist(file="test.csv")
 netwk0.to_unweighted().to_edgelist(file = "test1.csv")
 
 print(netwk0.copy().to_undirected().directed, netwk0.directed)
+
+print(netwk0)
+
+print(netwk1)

@@ -9,7 +9,7 @@ cdef extern from "../_wdnet/utils.h":
         vector[int], vector[int], vector[float], int)
 
 # Define the Python wrapper function
-def node_strength_py(edgelist, edgeweight):
+def node_strength_cy(edgelist, edgeweight):
     # Convert Python lists to C++ vectors
     cdef vector[int] snode = [x[0] for x in edgelist]
     cdef vector[int] tnode = [x[1] for x in edgelist]

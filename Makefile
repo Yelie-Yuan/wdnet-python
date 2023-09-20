@@ -8,7 +8,7 @@ build:
 
 .PHONY: clean
 clean:
-	rm -rf build dist src/*.egg-info src/wdnet/_*.c src/wdnet/__pycache__ src/wdnet/*.cpp
+	rm -rf build dist src/*.egg-info src/wdnet/*.c src/wdnet/__pycache__ src/wdnet/*.cpp
 	pip uninstall -y $(PACKAGE)
 
 .PHONY: install

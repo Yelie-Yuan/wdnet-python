@@ -23,12 +23,10 @@ ext_data = {
 extensions = []
 
 for name, data in ext_data.items():
-    sources = data["sources"]
-    language = data["language"]
     obj = Extension(
-        name,
-        sources=sources,
-        language=language,
+        name=name,
+        sources=data["sources"],
+        language=data["language"],
     )
     extensions.append(obj)
 
@@ -59,6 +57,7 @@ setup(
         "numpy",
         "pandas",
         "igraph",
+        "cvxpy",
     ],
     setup_requires=[
         "cython",

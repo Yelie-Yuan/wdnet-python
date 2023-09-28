@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages, Extension
 from Cython.Build import cythonize
 import os
-import glob
 
 ext_data = {
     "wdnet.fib_cy": {
@@ -58,9 +57,6 @@ setup(
         "pandas",
         "igraph",
         "cvxpy",
-    ],
-    setup_requires=[
-        "cython",
     ],
     ext_modules=cythonize(extensions, compiler_directives={"language_level": "3"}),
 )

@@ -4,11 +4,11 @@ PACKAGE = wdnet
 .PHONY: build
 build:
 	# pip install --upgrade build
-	$(PYTHON) setup.py sdist bdist_wheel
+	$(PYTHON) -m build
 
 .PHONY: clean
 clean:
-	rm -rf build dist src/*.egg-info src/wdnet/*.c src/wdnet/__pycache__ src/wdnet/*.cpp
+	rm -rf build dist src/*.egg-info src/wdnet/*.c src/wdnet/__pycache__ src/wdnet/*.cpp src/wdnet/*gnu.so
 	pip uninstall -y $(PACKAGE)
 
 .PHONY: install

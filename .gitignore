@@ -6,5 +6,7 @@ dist
 build
 src/wdnet/*.c
 src/wdnet/*.cpp
+src/wdnet/*gnu.so
+
 test.ipynb
 *.csv

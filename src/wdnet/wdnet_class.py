@@ -240,6 +240,28 @@ class WDNet:
         # Method implementation
         pass
 
+    def to_directed(self) -> "WDNet":
+        """
+        Convert to a directed network.
+
+        Returns:
+        -------
+        WDNet
+        """
+        if self.directed:
+            print("The network is already directed.")
+            return self.copy()
+        
+        netwk = WDNet(
+            edgelist=self.edgelist,
+            directed=True,
+            edgeweight=self.edge_attr["weight"],
+            edge_attr=self.edge_attr.drop(columns=["weight"]),
+            node_attr=self.node_attr.drop(columns=["s"]),
+        )
+        is_WDNet(netwk)
+        return netwk
+
     def to_undirected(self) -> "WDNet":
         """
         Convert to an undirected network.
@@ -249,17 +271,18 @@ class WDNet:
         WDNet
         """
         if not self.directed:
-            return self
+            print("The network is already undirected.")
+            return self.copy()
 
-        self.directed = False
-        self.node_attr["s"] = (
-            self.node_attr["outs"].to_numpy() + self.node_attr["ins"].to_numpy()
+        netwk = WDNet(
+            edgelist=self.edgelist,
+            directed=False,
+            edgeweight=self.edge_attr["weight"],
+            edge_attr=self.edge_attr.drop(columns=["weight"]),
+            node_attr=self.node_attr.drop(columns=["outs", "ins"]),
         )
-        self.node_attr = self.node_attr.drop(columns=["outs", "ins"])
-
-        is_WDNet(self)
-
-        return self
+        is_WDNet(netwk)
+        return netwk
 
     def to_unweighted(self) -> "WDNet":
         """
@@ -269,18 +292,19 @@ class WDNet:
         -------
         WDNet
         """
-        self.weighted = False
-        self.edge_attr["weight"] = [1] * len(self.edgelist)
-        outs, ins = node_strength_cy(self.edgelist, self.edge_attr["weight"].to_numpy())
-        if self.directed:
-            self.node_attr["outs"] = outs
-            self.node_attr["ins"] = ins
-        else:
-            self.node_attr["s"] = outs + ins
+        if not self.weighted:
+            print("The network is already unweighted.")
+            return self.copy()
 
-        is_WDNet(self)
-
-        return self
+        netwk = WDNet(
+            edgelist=self.edgelist,
+            directed=self.directed,
+            edgeweight=None,
+            edge_attr=self.edge_attr.drop(columns=["weight"]),
+            node_attr=self.node_attr.drop(columns=["outs", "ins"] if self.directed else ["s"]),
+        )
+        is_WDNet(netwk)
+        return netwk
 
     def to_igraph(self) -> Graph:
         """

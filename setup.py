@@ -3,19 +3,12 @@ from Cython.Build import cythonize
 import os
 
 ext_data = {
-    "wdnet.fib_cy": {
-        "sources": [
-            os.path.join("src/_wdnet", "fib.cpp"),
-            os.path.join("src/wdnet", "fib_cy.pyx"),
-        ],
-        "language": "c++"
-    },
     "wdnet.utils_cy": {
         "sources": [
             os.path.join("src/_wdnet", "utils.cpp"),
             os.path.join("src/wdnet", "utils_cy.pyx"),
         ],
-        "language": "c++"
+        "language": "c++",
     },
 }
 

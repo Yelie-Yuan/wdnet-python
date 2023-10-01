@@ -1,8 +1,8 @@
 import wdnet
 from copy import deepcopy
+
 wdnet.hello()
 print(dir(wdnet))
-print(wdnet.fib(10))
 from wdnet import WDNet
 import numpy as np
 from numpy import random
@@ -101,7 +101,7 @@ np.allclose(netwk0.node_attr, netwk1.node_attr)
 np.allclose(netwk0.node_attr, netwk2.node_attr)
 print(netwk0.weighted, netwk1.weighted, netwk2.weighted)
 netwk0.to_edgelist(file="test.csv")
-netwk0.to_unweighted().to_edgelist(file = "test1.csv")
+netwk0.to_unweighted().to_edgelist(file="test1.csv")
 
 print(netwk0.copy().to_undirected().directed, netwk0.directed)
 

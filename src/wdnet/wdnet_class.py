@@ -101,12 +101,18 @@ class WDNet:
     Weighted Directed Network (WDNet) class for representing networks.
 
     Attributes:
-        edgelist (Union[List[Tuple[int]], np.ndarray]): List of edges represented as tuples (u, v) or a 2-column numpy array.
-        directed (bool): Indicates whether the network is directed or undirected. Defaults to True.
-        edgeweight (Union[List[float], np.ndarray]): List or numpy array of weights associated with each edge. If None, all edges are assumed to have weight 1. Defaults to None.
-        edge_attr (DataFrame): Edge attributes stored as a DataFrame. Defaults to None.
-        node_attr (DataFrame): Node attributes stored as a DataFrame. Defaults to None.
-        weighted (bool): Indicates whether the network is weighted or not.
+    ----------
+    edgelist (Union[List[Tuple[int]], np.ndarray]): List of edges represented as 
+        tuples (u, v) or a 2-column numpy array.
+    directed (bool): Indicates whether the network is directed or undirected. 
+        Defaults to True.
+    edgeweight (Optional[Union[List[float], np.ndarray]]): List or numpy array of weights 
+        associated with each edge. If None, all edges are assumed to have weight 1. 
+        Defaults to None.
+    edge_attr (Optional[DataFrame]): Edge attributes stored as a DataFrame. 
+        Defaults to None.
+    node_attr (Optional[DataFrame]): Node attributes stored as a DataFrame. 
+        Defaults to None.
     """
 
     def __init__(
@@ -175,25 +181,16 @@ class WDNet:
                     node_attr = node_attr.drop(columns=["s"])
                 self.node_attr = self.node_attr.combine_first(node_attr)
 
-    def is_WDNet(self) -> bool:
-        # Check for required attributes
-        if not all(hasattr(self, attr) for attr in ["edgelist", "edgeweight"]):
-            return False
 
-        # Validate that the lengths of 'edgelist' and 'edgeweight' are the same
-        if len(self.edgelist) != len(self.edgeweight):
-            return False
-
-        return True
-
-    def assortcoef(self) -> Union[List[float], float]:
+    def assortcoef(self) -> Union[Dict[str, float], float]:
         """
         Calculate the assortativity coefficient of the network.
 
         Returns:
         -------
-        Union[Dict[float], float]
-            A dictionary of floats for directed networks and a single float for undirected networks.
+        Union[Dict[str, float], float]
+            A dictionary of floats for directed networks and a single 
+            float for undirected networks.
 
         Examples:
         --------
@@ -236,9 +233,11 @@ class WDNet:
                 ),
             )
 
+
     def centrality(self):
         # Method implementation
         pass
+
 
     def to_directed(self) -> "WDNet":
         """
@@ -262,6 +261,7 @@ class WDNet:
         is_WDNet(netwk)
         return netwk
 
+
     def to_undirected(self) -> "WDNet":
         """
         Convert to an undirected network.
@@ -283,6 +283,7 @@ class WDNet:
         )
         is_WDNet(netwk)
         return netwk
+
 
     def to_unweighted(self) -> "WDNet":
         """
@@ -306,6 +307,7 @@ class WDNet:
         is_WDNet(netwk)
         return netwk
 
+
     def to_igraph(self) -> Graph:
         """
         Convert to an igraph.Graph object.
@@ -323,6 +325,7 @@ class WDNet:
         for attr in self.node_attr.columns:
             g.vs[attr] = self.node_attr[attr].tolist()
         return g
+
 
     @classmethod
     def from_igraph(self, g) -> "WDNet":
@@ -348,13 +351,17 @@ class WDNet:
         node_attr = DataFrame(index=range(g.vcount()))
         for attr in g.vs.attributes():
             node_attr[attr] = g.vs[attr]
-        return WDNet(
+        netwk = WDNet(
             edgelist=edgelist,
             directed=directed,
             edgeweight=edgeweight,
             edge_attr=edge_attr,
             node_attr=node_attr,
         )
+
+        is_WDNet(netwk)
+        return netwk
+
 
     @classmethod
     def from_adjacency(self, adj, directed=True, weighted=True) -> "WDNet":
@@ -365,10 +372,11 @@ class WDNet:
         Parameters:
         ----------
         adj (np.ndarray): Adjacency matrix represented as a n by n numpy array.
-        directed (bool): Indicates whether the network is directed or undirected. Defaults to True.
-        weighted (bool): Indicates whether the network is weighted or not. Defaults to True. If
-        False, all non-zero elements in the adjacency matrix are considered to be the number of edges
-        between the corresponding nodes.
+        directed (bool): Indicates whether the network is directed or undirected. 
+            Defaults to True.
+        weighted (bool): Indicates whether the network is weighted or not. 
+            Defaults to True. If False, all non-zero elements in the adjacency matrix 
+            are considered to be the number of edges between the corresponding nodes.
         """
         if not adj.shape[0] == adj.shape[1]:
             raise ValueError("The adjacency matrix must be square.")
@@ -397,11 +405,15 @@ class WDNet:
                     else:
                         edgeweight.append([1] * adj[i, j])
                         edgelist.append([(i, j)] * adj[i, j])
-        return WDNet(
+        netwk = WDNet(
             edgelist=edgelist,
             directed=directed,
             edgeweight=edgeweight,
         )
+
+        is_WDNet(netwk)
+        return netwk
+
 
     def to_edgelist(self, file=None):
         if file is None:
@@ -429,6 +441,7 @@ class WDNet:
         else:
             np.savetxt(file, adj, delimiter=",")
 
+
     def copy(self) -> "WDNet":
         """
         Return a copy of the network.
@@ -438,6 +451,7 @@ class WDNet:
         WDNet
         """
         return deepcopy(self)
+
 
     def __str__(self):
         """

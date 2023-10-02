@@ -77,9 +77,10 @@ This package is under development.
 ```python
 from igraph import Graph
 from wdnet import WDNet, rewire
+import matplotlib.pyplot as plt
 
 # ER network
-g = Graph.Erdos_Renyi(n=100, m=1000, directed=True)
+g = Graph.Erdos_Renyi(n=200, m=5000, directed=True)
 netwk = WDNet.from_igraph(g)
 netwk.assortcoef()
 netwk.to_undirected()
@@ -88,8 +89,21 @@ netwk.to_igraph()
 # Use dprewire and dprewire_range functions
 # rewire.dprewire(net) # under development
 rewire.dprewire_range(netwk, which_range="inin")
-rewire.dprewire_range(netwk, which_range="inin", target_assortcoef={"outout": 0.5, "outin": 0.5})
 
+_, assort_trace, _ = rewire.dprewire(
+    netwk, target_assortcoef={"outout": 0.2, "outin": 0.2, "inout": -0.2, "inin": -0.2}
+)
+
+_, axs = plt.subplots(2, 2, figsize=(10, 10))
+axs[0, 0].plot(assort_trace["outout"])
+axs[0, 0].set_title("outout")
+axs[0, 1].plot(assort_trace["outin"])
+axs[0, 1].set_title("outin")
+axs[1, 0].plot(assort_trace["inout"])
+axs[1, 0].set_title("inout")
+axs[1, 1].plot(assort_trace["inin"])
+axs[1, 1].set_title("inin")
+plt.show()
 # Generate a PA network
 # rpanet(100, control=RPACtrl(), initial_network=WDNet()) # under development
 ```

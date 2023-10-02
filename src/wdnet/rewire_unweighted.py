@@ -2,10 +2,88 @@
 import numpy as np
 import pandas as pd
 import cvxpy as cp
+import warnings
 from typing import List, Tuple, Dict, Optional, Union, Callable
 from pandas import DataFrame
-import warnings
+from math import sqrt
 from .wdnet_class import WDNet
+
+
+def compute_correlation(x, y, xsum, ysum, x2sum, y2sum):
+    n = len(x)
+    xysum = np.sum(np.multiply(x, y))
+    numerator = n * xysum - xsum * ysum
+    denominator = sqrt((n * x2sum - xsum**2) * (n * y2sum - ysum**2))
+    return numerator / denominator
+
+
+def rewire_directed(
+    iteration,
+    nattempts,
+    tnode,
+    sout,
+    sin,
+    tout,
+    tin,
+    index_s,
+    index_t,
+    eta,
+    history,
+):
+    outout = np.zeros(iteration)
+    outin = np.zeros(iteration)
+    inout = np.zeros(iteration)
+    inin = np.zeros(iteration)
+
+    soutsum, sinsum = np.sum(sout), np.sum(sin)
+    toutsum, tinsum = np.sum(tout), np.sum(tin)
+    sout2sum = np.sum(sout**2)
+    sin2sum = np.sum(sin**2)
+    tout2sum = np.sum(tout**2)
+    tin2sum = np.sum(tin**2)
+
+    nedge = len(tnode)
+    hist_row = iteration * nattempts if history else 1
+
+    rewire_history = np.zeros((hist_row, 4), dtype=int)
+    count = 0
+
+    for n in range(iteration):
+        for i in range(nattempts):
+            e1 = int(np.floor(np.random.random() * nedge))
+            e2 = int(np.floor(np.random.random() * nedge))
+
+            while e1 == e2:
+                e2 = int(np.floor(np.random.random() * nedge))
+
+            if history:
+                rewire_history[count, :3] = [count + 1, e1, e2]
+
+            s1, s2 = index_s[e1], index_s[e2]
+            t1, t2 = index_t[e1], index_t[e2]
+
+            ratio = min(1, eta[s1][t2] * eta[s2][t1] / (eta[s1][t1] * eta[s2][t2]))
+
+            u = np.random.random()
+            if u <= ratio:
+                index_t[e1], index_t[e2] = index_t[e2], index_t[e1]
+                tnode[e1], tnode[e2] = tnode[e2], tnode[e1]
+                tout[e1], tout[e2] = tout[e2], tout[e1]
+                tin[e1], tin[e2] = tin[e2], tin[e1]
+
+                if history:
+                    rewire_history[count, 3] = 1
+
+            count += 1
+
+        outout[n] = compute_correlation(
+            sout, tout, soutsum, toutsum, sout2sum, tout2sum
+        )
+        outin[n] = compute_correlation(sout, tin, soutsum, tinsum, sout2sum, tin2sum)
+        inout[n] = compute_correlation(sin, tout, sinsum, toutsum, sin2sum, tout2sum)
+        inin[n] = compute_correlation(sin, tin, sinsum, tinsum, sin2sum, tin2sum)
+
+    return tnode, outout, outin, inout, inin, rewire_history
 
 
 # Compute the standard deviation of a vector j with probability vector q
@@ -14,8 +92,8 @@ def my_sigma(j, q):
 
 
 # Check if the target assortativity coefficient is valid
-def check_target_assortcoef(WDNet, target_assortcoef):
-    if WDNet.directed:
+def check_target_assortcoef(netwk, target_assortcoef):
+    if netwk.directed:
         if target_assortcoef:
             if type(target_assortcoef) != dict:
                 raise ValueError(
@@ -50,17 +128,17 @@ def name_eta(eta, d1, d2, index1, index2):
 
 
 # Get degree distributions of the given unweighted, directed network
-def get_dist_directed(WDNet):
-    if WDNet.weighted:
+def get_dist_directed(netwk):
+    if netwk.weighted:
         raise ValueError("The network must be unweighted.")
-    if not WDNet.directed:
+    if not netwk.directed:
         raise ValueError("The network must be directed.")
-    outd = WDNet.node_attr["outs"].values.astype(int)
-    ind = WDNet.node_attr["ins"].values.astype(int)
+    outd = netwk.node_attr["outs"].values.astype(int)
+    ind = netwk.node_attr["ins"].values.astype(int)
 
     nu = pd.crosstab(outd, ind, normalize=True)
 
-    snodes, tnodes = np.array(WDNet.edgelist).T
+    snodes, tnodes = np.array(netwk.edgelist).T
     tmp = pd.DataFrame(
         {
             "i": outd[snodes],
@@ -115,15 +193,15 @@ def get_dist_directed(WDNet):
 
 
 # Get degree distributions of the given unweighted, undirected network
-def get_dist_undirected(WDNet):
-    if WDNet.weighted:
+def get_dist_undirected(netwk):
+    if netwk.weighted:
         raise ValueError("The network must be unweighted.")
-    if WDNet.directed:
+    if netwk.directed:
         raise ValueError("The network must be undirected.")
-    d = WDNet.node_attr["s"].values.astype(int)
+    d = netwk.node_attr["s"].values.astype(int)
     nu = pd.crosstab(index=d, columns=d, normalize=True)
     p = nu.sum(axis=1).values
-    tmp1, tmp2 = np.array(WDNet.edgelist).T
+    tmp1, tmp2 = np.array(netwk.edgelist).T
     d1 = d[np.concatenate((tmp1, tmp2))]
     d2 = d[np.concatenate((tmp2, tmp1))]
     del tmp1, tmp2, d
@@ -141,7 +219,7 @@ def get_dist_undirected(WDNet):
 
 # Construct an eta for directed networks
 def get_eta_directed(
-    WDNet,
+    netwk,
     target_assortcoef,
     eta_obj,
     which_range,
@@ -153,7 +231,7 @@ def get_eta_directed(
 
     Parameters
     ----------
-    WDNet (WDNet): An instance of the WDNet class.
+    netwk (WDNet): An instance of the WDNet class.
 
     target_assortcoef (Optional[Dict[str, float]]): Target assortativity coefficient(s).
         This should be a dictionary with keys 'outout', 'outin', 'inout',
@@ -171,7 +249,7 @@ def get_eta_directed(
     **kwargs: Additional keyword arguments to be passed to cvxpy when solving
         the optimization problem.
     """
-    dist = get_dist_directed(WDNet)
+    dist = get_dist_directed(netwk)
     m = len(dist["dout"])
     n = len(dist["din"])
     soutin = dist["soutin"]
@@ -257,7 +335,7 @@ def get_eta_directed(
 
 # Construct an eta for undirected networks
 def get_eta_undirected(
-    WDNet,
+    netwk,
     target_assortcoef,
     eta_obj,
     **kwargs,
@@ -267,7 +345,7 @@ def get_eta_undirected(
 
     Parameters
     ----------
-    WDNet (WDNet): An instance of the WDNet class.
+    netwk (WDNet): An instance of the WDNet class.
 
     target_assortcoef (Optional[float]): Target assortativity coefficient.
         This should be a single float value.
@@ -283,7 +361,7 @@ def get_eta_undirected(
     **kwargs: Additional keyword arguments to be passed to cvxpy when solving
         the optimization problem.
     """
-    dist = get_dist_undirected(WDNet)
+    dist = get_dist_undirected(netwk)
     m = len(dist["d"])
     eta = cp.Variable((m, m), nonneg=True)
     constrs = [cp.sum(eta, axis=1) == dist["q"], eta == eta.T]
@@ -327,7 +405,7 @@ def get_eta_undirected(
 
 # Degree preserving rewiring for directed networks
 def dprewire_directed(
-    WDNet,
+    netwk,
     iteration,
     nattempts,
     history,
@@ -339,7 +417,7 @@ def dprewire_directed(
 
     Parameters
     ----------
-    WDNet (WDNet): An instance of the WDNet class.
+    netwk (WDNet): An instance of the WDNet class.
 
     iteration (int): Number of iterations to run the rewiring algorithm.
         Each iteration consists of nattempts rewiring attempts.
@@ -354,17 +432,62 @@ def dprewire_directed(
 
     Returns
     -------
-    WDNet (WDNet): The rewired network.
+    The rewired network (WDNet), the assortativity coefficients after
+    each iteration, and the rewiring history (if history is True).
 
     history (Optional[DataFrame]): A pandas DataFrame representing the
         rewiring history.
     """
-    return eta
+    snodes, tnodes = np.array(netwk.edgelist).T
+    outd = netwk.node_attr["outs"].values.astype(int)
+    ind = netwk.node_attr["ins"].values.astype(int)
+    sout = outd[snodes]
+    sin = ind[snodes]
+    tout = outd[tnodes]
+    tin = ind[tnodes]
+    dfs = pd.DataFrame({"type": eta.index.values, "index": np.arange(eta.shape[0])})
+    dfs.set_index("type", inplace=True)
+    dft = pd.DataFrame({"type": eta.columns.values, "index": np.arange(eta.shape[1])})
+    dft.set_index("type", inplace=True)
+
+    sindex = [dfs.loc[f"{i}-{j}", "index"] for i, j in zip(sout, sin)]
+    tindex = [dft.loc[f"{i}-{j}", "index"] for i, j in zip(tout, tin)]
+    del dfs, dft
+    tnode, outout, outin, inout, inin, rewire_history = rewire_directed(
+        iteration=iteration,
+        nattempts=nattempts,
+        tnode=tnodes,
+        sout=sout,
+        sin=sin,
+        tout=tout,
+        tin=tin,
+        index_s=sindex,
+        index_t=tindex,
+        eta=eta.values,
+        history=history,
+    )
+    assortcoef = pd.DataFrame(
+        {
+            "outout": outout,
+            "outin": outin,
+            "inout": inout,
+            "inin": inin,
+        }
+    )
+    # insert one row at the beginning of assortcoef and reset the index
+    initial_assort = pd.DataFrame([netwk.assortcoef()], columns=assortcoef.columns)
+    assortcoef = pd.concat([initial_assort, assortcoef]).reset_index(drop=True)
+    snodes = snodes.astype(int)
+    tnodes = tnode.astype(int)
+    netwk = WDNet(edgelist=np.array([snodes, tnodes]).T, directed=True)
+    if not history:
+        rewire_history = None
+    return netwk, assortcoef, rewire_history
 
 
 # Degree preserving rewiring for undirected networks
 def dprewire_undirected(
-    WDNet,
+    netwk,
     iteration,
     nattempts,
     history,
@@ -375,7 +498,7 @@ def dprewire_undirected(
 
 # Main function for degree preserving rewiring
 def dprewire(
-    WDNet: WDNet,
+    netwk: WDNet,
     target_assortcoef: Union[Dict[str, float], float],
     iteration: int = 200,
     nattempts: Optional[int] = None,
@@ -391,7 +514,7 @@ def dprewire(
 
     Parameters
     ----------
-    WDNet (WDNet): An instance of the WDNet class.
+    netwk (WDNet): An instance of the WDNet class.
     target_assortcoef (Optional[Union[Dict[str, float], float]]): Target assortativity coefficient(s).
         For directed networks, this should be a dictionary with keys
         'outout', 'outin', 'inout', and 'inin' corresponding to the
@@ -424,15 +547,15 @@ def dprewire(
         See https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
         for details.
     """
-    if WDNet.weighted:
+    if netwk.weighted:
         raise ValueError("The network must be unweighted.")
-    check_target_assortcoef(WDNet, target_assortcoef)
+    check_target_assortcoef(netwk, target_assortcoef)
     if nattempts is None:
-        nattempts = WDNet.edge_attr.shape[0]
-    if WDNet.directed:
+        nattempts = netwk.edge_attr.shape[0]
+    if netwk.directed:
         if eta is None:
             eta, _, _ = get_eta_directed(
-                WDNet=WDNet,
+                netwk=netwk,
                 target_assortcoef=target_assortcoef,
                 eta_obj=eta_obj,
                 which_range=None,
@@ -440,15 +563,23 @@ def dprewire(
                 **kwargs,
             )  # type: ignore
         return dprewire_directed(
-            WDNet=WDNet,
+            netwk=netwk,
             iteration=iteration,
             nattempts=nattempts,
             history=history,
             eta=eta,
         )
     else:
+        if eta is None:
+            eta, _, _ = get_eta_undirected(
+                netwk=netwk,
+                target_assortcoef=target_assortcoef,
+                eta_obj=eta_obj,
+                solver=cvxpy_solver,
+                **kwargs,
+            )  # type: ignore
         return dprewire_undirected(
-            WDNet=WDNet,
+            netwk=netwk,
             iteration=iteration,
             nattempts=nattempts,
             history=history,
@@ -458,7 +589,7 @@ def dprewire(
 
 # Function to compute the range of assortativity coefficients
 def dprewire_range(
-    WDNet: WDNet,
+    netwk: WDNet,
     which_range: Optional[str] = None,
     target_assortcoef: Optional[Union[Dict[str, float], float]] = None,
     cvxpy_solver: str = "ECOS",
@@ -470,7 +601,7 @@ def dprewire_range(
 
     Parameters
     ----------
-    WDNet (WDNet): An instance of the WDNet class.
+    netwk (WDNet): An instance of the WDNet class.
 
     which_range (Optional[str]): Which range of assortativity
         coefficients to compute. For directed networks, this should be
@@ -491,14 +622,14 @@ def dprewire_range(
         See https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
         for details.
     """
-    if which_range is None and WDNet.directed:
+    if which_range is None and netwk.directed:
         raise ValueError("which_range must be specified for directed networks.")
-    if WDNet.weighted:
+    if netwk.weighted:
         raise ValueError("The network must be unweighted.")
-    check_target_assortcoef(WDNet, target_assortcoef)
-    if WDNet.directed:
+    check_target_assortcoef(netwk, target_assortcoef)
+    if netwk.directed:
         ret, _, _ = get_eta_directed(
-            WDNet=WDNet,
+            netwk=netwk,
             target_assortcoef=target_assortcoef,
             eta_obj=lambda eta: 0,
             which_range=which_range,
@@ -510,7 +641,7 @@ def dprewire_range(
         if which_range is not None:
             warnings.warn('"which_range" is ignored for undirected networks.')
         ret, _, _ = get_eta_undirected(
-            WDNet=WDNet,
+            netwk=netwk,
             target_assortcoef=target_assortcoef,
             eta_obj=lambda eta: 0,
             solver=cvxpy_solver,

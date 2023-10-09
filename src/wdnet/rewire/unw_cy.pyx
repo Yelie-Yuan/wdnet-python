@@ -53,7 +53,7 @@ cpdef cnp.float64_t compute_correlation(
 
     return numerator / denominator
 
-def dprewire_directed_cy(
+cpdef dprewire_directed_cy(
         const int iteration,
         const int nattempts,
         cnp.ndarray[cnp.int_t, ndim=1] tnode,
@@ -121,7 +121,7 @@ def dprewire_directed_cy(
     else:
         hist_row = 1
 
-    cdef int[:, :] rewire_history = np.zeros((hist_row, 3), dtype=np.intc)
+    cdef cnp.ndarray[cnp.int_t, ndim=2] rewire_history = np.zeros((hist_row, 3), dtype=np.int_)
 
     for n in range(iteration):
         for i in range(nattempts):

@@ -18,7 +18,7 @@ def compute_correlation(x, y, xsum, ysum, x2sum, y2sum):
     return numerator / denominator
 
 
-def rewire_directed(
+def dprewire_directed_py(
     iteration,
     nattempts,
     tnode,
@@ -46,7 +46,7 @@ def rewire_directed(
     nedge = len(tnode)
     hist_row = iteration * nattempts if history else 1
 
-    rewire_history = np.zeros((hist_row, 4), dtype=int)
+    rewire_history = np.zeros((hist_row, 3), dtype=int)
     count = 0
 
     for n in range(iteration):
@@ -58,7 +58,7 @@ def rewire_directed(
                 e2 = int(np.floor(np.random.random() * nedge))
 
             if history:
-                rewire_history[count, :3] = [count + 1, e1, e2]
+                rewire_history[count, :2] = [e1, e2]
 
             s1, s2 = index_s[e1], index_s[e2]
             t1, t2 = index_t[e1], index_t[e2]
@@ -73,7 +73,7 @@ def rewire_directed(
                 tin[e1], tin[e2] = tin[e2], tin[e1]
 
                 if history:
-                    rewire_history[count, 3] = 1
+                    rewire_history[count, 2] = 1
 
             count += 1
 
@@ -405,13 +405,7 @@ def get_eta_undirected(
 
 
 # Degree preserving rewiring for directed networks
-def dprewire_directed(
-    netwk,
-    iteration,
-    nattempts,
-    history,
-    eta,
-):
+def dprewire_directed(netwk, iteration, nattempts, history, eta, fun="py"):
     """
     Rewire an unweighted directed network towards target assortativity
     coefficient(s) while preserving node degrees.
@@ -439,6 +433,7 @@ def dprewire_directed(
     history (Optional[DataFrame]): A pandas DataFrame representing the
         rewiring history.
     """
+    initial_coef = netwk.assortcoef()
     snodes, tnodes = netwk.edgelist.T
     outd = netwk.node_attr["outs"].values.astype(np.int_)
     ind = netwk.node_attr["ins"].values.astype(np.int_)
@@ -463,7 +458,11 @@ def dprewire_directed(
     tout = tout.astype(np.float64)
     tin = tin.astype(np.float64)
     eta = eta.to_numpy(dtype=np.float64)
-    tnodes, outout, outin, inout, inin, rewire_history = dprewire_directed_cy(
+    if fun == "py":
+        rewire_function = dprewire_directed_py
+    else:
+        rewire_function = dprewire_directed_cy
+    tnodes, outout, outin, inout, inin, rewire_history = rewire_function(
         iteration=iteration,
         nattempts=nattempts,
         tnode=tnodes,
@@ -488,12 +487,18 @@ def dprewire_directed(
     del outout, outin, inout, inin
 
     # insert one row at the beginning of assortcoef and reset the index
-    initial_assort = pd.DataFrame([netwk.assortcoef()], columns=assortcoef.columns)
+    initial_assort = pd.DataFrame([initial_coef], columns=assortcoef.columns)
     assortcoef = pd.concat([initial_assort, assortcoef]).reset_index(drop=True)
     assortcoef.index.name = "iteration"
     netwk = WDNet(edgelist=np.column_stack((snodes, tnodes)), directed=True)
     if not history:
         rewire_history = None
+    else:
+        rewire_history = pd.DataFrame(
+            rewire_history,
+            columns=["edge1", "edge2", "accepted"],
+        )
+        rewire_history.index.name = "attempt"
     return netwk, assortcoef, rewire_history
 
 
@@ -518,6 +523,7 @@ def dprewire(
     eta_obj: Optional[Callable] = lambda eta: 0,
     cvxpy_solver: str = "ECOS",
     eta: Optional[DataFrame] = None,
+    fun: str = "py",
     **kwargs,
 ):
     """
@@ -559,6 +565,7 @@ def dprewire(
         See https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
         for details.
     """
+    netwk = netwk.copy()
     if netwk.weighted:
         raise ValueError("The network must be unweighted.")
     check_target_assortcoef(netwk, target_assortcoef)
@@ -580,6 +587,7 @@ def dprewire(
             nattempts=nattempts,
             history=history,
             eta=eta,
+            fun=fun,
         )
     else:
         if eta is None:

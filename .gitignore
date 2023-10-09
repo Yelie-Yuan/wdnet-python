@@ -4,7 +4,8 @@
 __pycache__
 dist
 build
-src/wdnet/*.cpp
+*.cpp
 
 test.ipynb
+test.py
 *.csv

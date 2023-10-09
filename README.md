@@ -34,8 +34,10 @@ This package is under development.
   - [ ] Bag method
   - [ ] Bagx method
 - [x] `WDNet` class
+  - [x] `edgelist`, `numpy` 2-D array with data type `numpy.int_`
+  - [x] `edgeweight`, `numpy` 1-D array with data type `numpy.float64`
+    if `weighted` and `numpy.int_` if `unweighted`.
 - [ ] `rpacontrol` class
-
 
 # Structure (tentative)
 
@@ -51,7 +53,9 @@ This package is under development.
   - from_edgelist()
   - from_adj()
   - to_edgelist()
-  - to_adj()
+  - save_edgelist()
+  - to_adjacency()
+  - save_adjacency()
 + RPACtrl
   - scenario()
   - edgeweight()
@@ -75,9 +79,12 @@ This package is under development.
 ## Example Usage
 
 ```python
+from numpy import random as nprandom
 from igraph import Graph
 from wdnet import WDNet, rewire
 import matplotlib.pyplot as plt
+import random
+random.seed(123) # for igraph
 
 # ER network
 g = Graph.Erdos_Renyi(n=200, m=5000, directed=True)
@@ -90,6 +97,7 @@ netwk.to_igraph()
 # rewire.dprewire(net) # under development
 rewire.dprewire_range(netwk, which_range="inin")
 
+nprandom.seed(123) # for wdnet
 _, assort_trace, _ = rewire.dprewire(
     netwk, target_assortcoef={"outout": 0.2, "outin": 0.2, "inout": -0.2, "inin": -0.2}
 )

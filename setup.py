@@ -1,12 +1,17 @@
 from setuptools import setup, find_packages, Extension
 from Cython.Build import cythonize
-import os
+import numpy as np
 
 ext_data = {
-    "wdnet.utils_cy": {
+    "wdnet.rewire.unw_cy": {
         "sources": [
-            os.path.join("src/_wdnet", "utils.cpp"),
-            os.path.join("src/wdnet", "utils_cy.pyx"),
+            "src/wdnet/rewire/unw_cy.pyx",
+        ],
+        "language": "c++",
+    },
+    "wdnet._utils": {
+        "sources": [
+            "src/wdnet/_utils.pyx",
         ],
         "language": "c++",
     },
@@ -19,6 +24,7 @@ for name, data in ext_data.items():
         name=name,
         sources=data["sources"],
         language=data["language"],
+        include_dirs=[np.get_include()],
     )
     extensions.append(obj)
 

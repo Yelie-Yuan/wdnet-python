@@ -1,6 +1,4 @@
-include src/wdnet/*.pyx
-exclude src/wdnet/*.cpp
-include src/_wdnet/*.h
-include src/_wdnet/*.cpp
+recursive-include src/wdnet *.pyx *.py
+recursive-exclude src/wdnet *.cpp
 include MANIFEST.in
 exclude test_on_install.py

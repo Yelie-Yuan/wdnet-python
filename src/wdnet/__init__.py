@@ -1,11 +1,11 @@
 # user accessible functions
-from .hello import hello
+from ._hello import hello
 from .wdnet_class import WDNet
-from . import rewire
 
-# from ._utils import node_strength_cy
+import wdnet.rewire as rewire
 
-# delete 'modules'
-del utils_cy
+del _hello
 del wdnet_class
-del rewire_unweighted
+del _utils
+
+__all__ = ["WDNet", "hello", "rewire"]

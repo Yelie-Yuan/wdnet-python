@@ -6,7 +6,8 @@ import warnings
 from typing import List, Tuple, Dict, Optional, Union, Callable
 from pandas import DataFrame
 from math import sqrt
-from .wdnet_class import WDNet
+from ..wdnet_class import WDNet
+from .unw_cy import dprewire_directed_cy
 
 
 def compute_correlation(x, y, xsum, ysum, x2sum, y2sum):
@@ -438,9 +439,9 @@ def dprewire_directed(
     history (Optional[DataFrame]): A pandas DataFrame representing the
         rewiring history.
     """
-    snodes, tnodes = np.array(netwk.edgelist).T
-    outd = netwk.node_attr["outs"].values.astype(int)
-    ind = netwk.node_attr["ins"].values.astype(int)
+    snodes, tnodes = netwk.edgelist.T
+    outd = netwk.node_attr["outs"].values.astype(np.int_)
+    ind = netwk.node_attr["ins"].values.astype(np.int_)
     sout = outd[snodes]
     sin = ind[snodes]
     tout = outd[tnodes]
@@ -450,10 +451,19 @@ def dprewire_directed(
     dft = pd.DataFrame({"type": eta.columns.values, "index": np.arange(eta.shape[1])})
     dft.set_index("type", inplace=True)
 
-    sindex = [dfs.loc[f"{i}-{j}", "index"] for i, j in zip(sout, sin)]
-    tindex = [dft.loc[f"{i}-{j}", "index"] for i, j in zip(tout, tin)]
+    sindex = np.array(
+        [dfs.loc[f"{i}-{j}", "index"] for i, j in zip(sout, sin)], dtype=np.int_
+    )
+    tindex = np.array(
+        [dft.loc[f"{i}-{j}", "index"] for i, j in zip(tout, tin)], dtype=np.int_
+    )
     del dfs, dft
-    tnode, outout, outin, inout, inin, rewire_history = rewire_directed(
+    sout = sout.astype(np.float64)
+    sin = sin.astype(np.float64)
+    tout = tout.astype(np.float64)
+    tin = tin.astype(np.float64)
+    eta = eta.to_numpy(dtype=np.float64)
+    tnodes, outout, outin, inout, inin, rewire_history = dprewire_directed_cy(
         iteration=iteration,
         nattempts=nattempts,
         tnode=tnodes,
@@ -463,9 +473,10 @@ def dprewire_directed(
         tin=tin,
         index_s=sindex,
         index_t=tindex,
-        eta=eta.values,
+        eta=eta,
         history=history,
     )
+    del sout, sin, tout, tin, sindex, tindex, eta
     assortcoef = pd.DataFrame(
         {
             "outout": outout,
@@ -474,12 +485,13 @@ def dprewire_directed(
             "inin": inin,
         }
     )
+    del outout, outin, inout, inin
+
     # insert one row at the beginning of assortcoef and reset the index
     initial_assort = pd.DataFrame([netwk.assortcoef()], columns=assortcoef.columns)
     assortcoef = pd.concat([initial_assort, assortcoef]).reset_index(drop=True)
-    snodes = snodes.astype(int)
-    tnodes = tnode.astype(int)
-    netwk = WDNet(edgelist=np.array([snodes, tnodes]).T, directed=True)
+    assortcoef.index.name = "iteration"
+    netwk = WDNet(edgelist=np.column_stack((snodes, tnodes)), directed=True)
     if not history:
         rewire_history = None
     return netwk, assortcoef, rewire_history

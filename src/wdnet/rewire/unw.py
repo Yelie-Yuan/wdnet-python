@@ -88,7 +88,7 @@ def dprewire_undirected_py(
             count += 1
 
         rho[n] = np.corrcoef(degree1, degree2)[0, 1]
-    return node2, rho, rewire_history
+    return node1, node2, rho, rewire_history
 
 
 def dprewire_directed_py(
@@ -647,7 +647,7 @@ def dprewire_undirected(
     # else:
     #     rewire_function = dprewire_undirected_cy
 
-    node2, assort_trace, rewire_history = rewire_function(
+    node1, node2, assort_trace, rewire_history = rewire_function(
         iteration=iteration,
         nattempts=nattempts,
         node1=node1,

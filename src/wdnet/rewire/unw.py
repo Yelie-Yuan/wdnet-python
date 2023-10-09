@@ -18,18 +18,91 @@ def compute_correlation(x, y, xsum, ysum, x2sum, y2sum):
     return numerator / denominator
 
 
+def dprewire_undirected_py(
+    iteration: int,
+    nattempts: int,
+    node1: np.ndarray,
+    node2: np.ndarray,
+    degree1: np.ndarray,
+    degree2: np.ndarray,
+    index1: np.ndarray,
+    index2: np.ndarray,
+    eta: np.ndarray,
+    history: bool = False,
+):
+    rho = np.zeros(iteration, dtype=np.float64)
+    nedge = index1.shape[0]
+    count = 0
+
+    hist_row = iteration * nattempts if history else 1
+    rewire_history = np.zeros((hist_row, 4), dtype=np.int_)
+
+    for n in range(iteration):
+        for _ in range(nattempts):
+            e1 = int(np.floor(np.random.random() * nedge))
+            e2 = int(np.floor(np.random.random() * nedge))
+
+            while e1 == e2:
+                e2 = int(np.floor(np.random.random() * nedge))
+
+            if history:
+                rewire_history[count, :2] = [e1, e2]
+
+            s1, s2 = index1[e1], index1[e2]
+            t1, t2 = index2[e1], index2[e2]
+
+            v = np.random.random()
+            u = np.random.random()
+
+            if v < 0.5:
+                if eta[s1, t2] * eta[s2, t1] < eta[s1, t1] * eta[s2, t2]:
+                    ratio = eta[s1, t2] * eta[s2, t1] / (eta[s1, t1] * eta[s2, t2])
+                else:
+                    ratio = 1
+
+                if u <= ratio:
+                    if history:
+                        rewire_history[count, 3] = 1
+                    index2[e1], index2[e2] = index2[e2], index2[e1]
+                    node2[e1], node2[e2] = node2[e2], node2[e1]
+                    degree2[e1], degree2[e2] = degree2[e2], degree2[e1]
+                    degree1[e1 + nedge], degree1[e2 + nedge] = (
+                        degree1[e2 + nedge],
+                        degree1[e1 + nedge],
+                    )
+            else:
+                if history:
+                    rewire_history[count, 2] = 1
+                if eta[s1, s2] * eta[t1, t2] < eta[s1, t1] * eta[s2, t2]:
+                    ratio = eta[s1, s2] * eta[t1, t2] / (eta[s1, t1] * eta[s2, t2])
+                else:
+                    ratio = 1
+                if u <= ratio:
+                    index1[e2], index2[e1] = index2[e1], index1[e2]
+                    node1[e2], node2[e1] = node2[e1], node1[e2]
+                    degree1[e2], degree2[e1] = degree2[e1], degree1[e2]
+                    degree1[e1 + nedge], degree2[e2 + nedge] = (
+                        degree2[e2 + nedge],
+                        degree1[e1 + nedge],
+                    )
+            count += 1
+
+        rho[n] = np.corrcoef(degree1, degree2)[0, 1]
+    return node2, rho, rewire_history
+
+
 def dprewire_directed_py(
-    iteration,
-    nattempts,
-    tnode,
-    sout,
-    sin,
-    tout,
-    tin,
-    index_s,
-    index_t,
-    eta,
-    history,
+    iteration: int,
+    nattempts: int,
+    tnode: np.ndarray,
+    sout: np.ndarray,
+    sin: np.ndarray,
+    tout: np.ndarray,
+    tin: np.ndarray,
+    index_s: np.ndarray,
+    index_t: np.ndarray,
+    eta: np.ndarray,
+    history: bool = False,
 ):
     outout = np.zeros(iteration)
     outin = np.zeros(iteration)
@@ -46,11 +119,11 @@ def dprewire_directed_py(
     nedge = len(tnode)
     hist_row = iteration * nattempts if history else 1
 
-    rewire_history = np.zeros((hist_row, 3), dtype=int)
+    rewire_history = np.zeros((hist_row, 3), dtype=np.int_)
     count = 0
 
     for n in range(iteration):
-        for i in range(nattempts):
+        for _ in range(nattempts):
             e1 = int(np.floor(np.random.random() * nedge))
             e2 = int(np.floor(np.random.random() * nedge))
 
@@ -63,7 +136,10 @@ def dprewire_directed_py(
             s1, s2 = index_s[e1], index_s[e2]
             t1, t2 = index_t[e1], index_t[e2]
 
-            ratio = min(1, eta[s1][t2] * eta[s2][t1] / (eta[s1][t1] * eta[s2][t2]))
+            if eta[s1, t2] * eta[s2, t1] < eta[s1, t1] * eta[s2, t2]:
+                ratio = eta[s1, t2] * eta[s2, t1] / (eta[s1, t1] * eta[s2, t2])
+            else:
+                ratio = 1
 
             u = np.random.random()
             if u <= ratio:
@@ -120,11 +196,16 @@ def check_target_assortcoef(netwk, target_assortcoef):
 
 
 # Name the rows and columns of eta for directed networks
-def name_eta(eta, d1, d2, index1, index2):
-    eta = pd.DataFrame(eta)
+def name_eta(
+    eta: DataFrame,
+    d1: np.ndarray,
+    d2: np.ndarray,
+    index1: List[bool],
+    index2: List[bool],
+):
     tmp = np.array([f"{i}-{j}" for i in d1 for j in d2])
-    eta.index = tmp[index1]
-    eta.columns = tmp[index2]
+    eta.index = pd.Index(tmp[index1])
+    eta.columns = pd.Index(tmp[index2])
     return eta
 
 
@@ -314,7 +395,9 @@ def get_eta_directed(
         if problem.status != "optimal":
             # show a warning about solver status
             warnings.warn(f"Solver status: {problem.status}")
-        eta = name_eta(eta.value, dist["dout"], dist["din"], indexs, indext)
+        eta = name_eta(
+            pd.DataFrame(eta.value), dist["dout"], dist["din"], indexs, indext
+        )
         return eta, problem.status, problem.solver_stats
     else:
         problem1 = cp.Problem(cp.Minimize(r[which_range]), constrs)
@@ -405,7 +488,14 @@ def get_eta_undirected(
 
 
 # Degree preserving rewiring for directed networks
-def dprewire_directed(netwk, iteration, nattempts, history, eta, fun="py"):
+def dprewire_directed(
+    netwk: WDNet,
+    iteration: int,
+    nattempts: int,
+    history: bool,
+    eta: DataFrame,
+    fun: str,
+):
     """
     Rewire an unweighted directed network towards target assortativity
     coefficient(s) while preserving node degrees.
@@ -457,7 +547,7 @@ def dprewire_directed(netwk, iteration, nattempts, history, eta, fun="py"):
     sin = sin.astype(np.float64)
     tout = tout.astype(np.float64)
     tin = tin.astype(np.float64)
-    eta = eta.to_numpy(dtype=np.float64)
+    eta_array = np.array(eta, dtype=np.float64)
     if fun == "py":
         rewire_function = dprewire_directed_py
     else:
@@ -472,10 +562,10 @@ def dprewire_directed(netwk, iteration, nattempts, history, eta, fun="py"):
         tin=tin,
         index_s=sindex,
         index_t=tindex,
-        eta=eta,
+        eta=eta_array,
         history=history,
     )
-    del sout, sin, tout, tin, sindex, tindex, eta
+    del sout, sin, tout, tin, sindex, tindex, eta, eta_array
     assortcoef = pd.DataFrame(
         {
             "outout": outout,
@@ -504,13 +594,91 @@ def dprewire_directed(netwk, iteration, nattempts, history, eta, fun="py"):
 
 # Degree preserving rewiring for undirected networks
 def dprewire_undirected(
-    netwk,
-    iteration,
-    nattempts,
-    history,
-    eta,
+    netwk: WDNet,
+    iteration: int,
+    nattempts: int,
+    history: bool,
+    eta: DataFrame,
+    fun: str,
 ):
-    return None
+    """
+    Rewire an unweighted undirected network towards target
+    assortativity coefficient while preserving node degrees.
+
+    Parameters
+    ----------
+    netwk : WDNet
+        An instance of the WDNet class.
+    iteration : int
+        Number of iterations to run the rewiring algorithm. Each
+        iteration consists of nattempts rewiring attempts.
+    nattempts : int
+        Number of rewiring attempts per iteration.
+    history : bool
+        If True, the rewiring history is returned.
+    eta : DataFrame
+        A pandas DataFrame representing the proportion of edges
+        between nodes with degree i and nodes with degree j.
+    Returns
+    -------
+    The rewired network; the assortativity coefficients after each
+    iteration; and the rewiring history if history is True.
+    """
+    initial_coef = netwk.assortcoef()
+    node1, node2 = netwk.edgelist.T
+    deg = netwk.node_attr["s"].values.astype(np.int_)
+    eta_index_values = eta.index.values.astype(np.int_)
+    index1 = np.array(
+        [np.where(eta_index_values == i)[0][0] for i in deg[node1]], dtype=np.int_
+    )
+    index2 = np.array(
+        [np.where(eta_index_values == i)[0][0] for i in deg[node2]], dtype=np.int_
+    )
+    degree1 = deg[np.concatenate((node1, node2))]
+    degree2 = deg[np.concatenate((node2, node1))]
+    del deg, eta_index_values
+    degree1 = degree1.astype(np.float64)
+    degree2 = degree2.astype(np.float64)
+    eta_array = np.array(eta, dtype=np.float64)
+
+    rewire_function = dprewire_undirected_py
+    if fun == "py":
+        rewire_function = dprewire_undirected_py
+    # else:
+    #     rewire_function = dprewire_undirected_cy
+
+    node2, assort_trace, rewire_history = rewire_function(
+        iteration=iteration,
+        nattempts=nattempts,
+        node1=node1,
+        node2=node2,
+        degree1=degree1,
+        degree2=degree2,
+        index1=index1,
+        index2=index2,
+        eta=eta_array,
+        history=history,
+    )
+    del degree1, degree2, index1, index2, eta, eta_array
+
+    initial_coef_array = np.array([initial_coef])
+    assortcoef = pd.DataFrame(
+        np.concatenate([initial_coef_array, assort_trace]), columns=["assortcoef"]
+    )
+    assortcoef.index.name = "iteration"
+
+    rewired_netwk = WDNet(edgelist=np.column_stack((node1, node2)), directed=False)
+
+    if not history:
+        rewire_history = None
+    else:
+        rewire_history = pd.DataFrame(
+            rewire_history,
+            columns=["edge1", "edge2", "accepted", "scenario"],
+        )
+        rewire_history.index.name = "attempt"
+
+    return rewired_netwk, assortcoef, rewire_history
 
 
 # Main function for degree preserving rewiring
@@ -604,6 +772,7 @@ def dprewire(
             nattempts=nattempts,
             history=history,
             eta=eta,
+            fun=fun,
         )
 
 

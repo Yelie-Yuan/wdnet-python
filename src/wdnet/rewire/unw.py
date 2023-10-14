@@ -393,8 +393,11 @@ def get_eta_directed(
         problem = cp.Problem(cp.Minimize(eta_obj(eta)), constrs)
         problem.solve(**kwargs)
         if problem.status != "optimal":
-            # show a warning about solver status
-            warnings.warn(f"Solver status: {problem.status}")
+            if problem.status == "infeasible":
+                raise ValueError(f"Solver status: {problem.status}")
+            else:
+                # show a warning about solver status
+                warnings.warn(f"Solver status: {problem.status}")
         eta = name_eta(
             pd.DataFrame(eta.value), dist["dout"], dist["din"], indexs, indext
         )
@@ -403,13 +406,19 @@ def get_eta_directed(
         problem1 = cp.Problem(cp.Minimize(r[which_range]), constrs)
         problem1.solve(**kwargs)
         if problem1.status != "optimal":
-            # show a warning about solver status
-            warnings.warn(f"Lower bound solver status: {problem1.status}")
+            if problem1.status == "infeasible":
+                raise ValueError(f"Solver status: {problem1.status}")
+            else:
+                # show a warning about solver status
+                warnings.warn(f"Solver status: {problem1.status}")
         problem2 = cp.Problem(cp.Maximize(r[which_range]), constrs)
         problem2.solve(**kwargs)
         if problem2.status != "optimal":
-            # show a warning about solver status
-            warnings.warn(f"Upper bound solver status: {problem2.status}")
+            if problem2.status == "infeasible":
+                raise ValueError(f"Solver status: {problem2.status}")
+            else:
+                # show a warning about solver status
+                warnings.warn(f"Solver status: {problem2.status}")
         return (
             [problem1.value, problem2.value],
             [problem1.status, problem1.solver_stats],

@@ -21,7 +21,7 @@ void dprewire_directed_cpp(
     const std::vector<int>& index_s,
     std::vector<int>& index_t,
     const std::vector<std::vector<double>>& eta,
-    bool history,
+    const bool history,
     std::vector<std::vector<int>>& rewire_history,
     std::vector<double>& outout,
     std::vector<double>& outin,

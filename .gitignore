@@ -5,6 +5,7 @@ __pycache__
 dist
 build
 *.cpp
+!src/_wdnet/*.cpp
 
 test.ipynb
 test.py

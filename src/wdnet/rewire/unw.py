@@ -8,6 +8,7 @@ from pandas import DataFrame
 from math import sqrt
 from ..wdnet_class import WDNet
 from .unw_cy import dprewire_directed_cy
+from .unw_cy import dprewire_directed_cpp_wrapper
 
 
 def compute_correlation(x, y, xsum, ysum, x2sum, y2sum):
@@ -559,8 +560,10 @@ def dprewire_directed(
     eta_array = np.array(eta, dtype=np.float64)
     if fun == "py":
         rewire_function = dprewire_directed_py
-    else:
+    elif fun == "cy":
         rewire_function = dprewire_directed_cy
+    else:
+        rewire_function = dprewire_directed_cpp_wrapper
     tnodes, outout, outin, inout, inin, rewire_history = rewire_function(
         iteration=iteration,
         nattempts=nattempts,

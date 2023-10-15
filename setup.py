@@ -6,6 +6,7 @@ ext_data = {
     "wdnet.rewire.unw_cy": {
         "sources": [
             "src/wdnet/rewire/unw_cy.pyx",
+            "src/_wdnet/rewire.cpp",
         ],
         "language": "c++",
     },

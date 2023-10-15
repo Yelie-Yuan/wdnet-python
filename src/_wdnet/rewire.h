@@ -1,14 +1,7 @@
 #pragma once
 
 #include <vector>
-
-double compute_correlation(
-    const std::vector<double>& x, 
-    const std::vector<double>& y, 
-    double xsum, 
-    double ysum, 
-    double x2sum, 
-    double y2sum);
+#include <cstdint>
 
 void dprewire_directed_cpp(
     const int iteration, 
@@ -23,6 +16,7 @@ void dprewire_directed_cpp(
     const std::vector<std::vector<double>>& eta,
     const bool history,
     std::vector<std::vector<int>>& rewire_history,
+    const uint32_t random_seed,
     std::vector<double>& outout,
     std::vector<double>& outin,
     std::vector<double>& inout,

@@ -2,21 +2,14 @@
 import numpy as np
 import pandas as pd
 import cvxpy as cp
+import sys
+import os
 import warnings
 from typing import List, Tuple, Dict, Optional, Union, Callable
 from pandas import DataFrame
 from math import sqrt
 from ..wdnet_class import WDNet
-from .unw_cy import dprewire_directed_cy
 from .unw_cy import dprewire_directed_cpp_wrapper
-
-
-def compute_correlation(x, y, xsum, ysum, x2sum, y2sum):
-    n = len(x)
-    xysum = np.sum(np.multiply(x, y))
-    numerator = n * xysum - xsum * ysum
-    denominator = sqrt((n * x2sum - xsum**2) * (n * y2sum - ysum**2))
-    return numerator / denominator
 
 
 def dprewire_undirected_py(
@@ -90,78 +83,6 @@ def dprewire_undirected_py(
 
         rho[n] = np.corrcoef(degree1, degree2)[0, 1]
     return node1, node2, rho, rewire_history
-
-
-def dprewire_directed_py(
-    iteration: int,
-    nattempts: int,
-    tnode: np.ndarray,
-    sout: np.ndarray,
-    sin: np.ndarray,
-    tout: np.ndarray,
-    tin: np.ndarray,
-    index_s: np.ndarray,
-    index_t: np.ndarray,
-    eta: np.ndarray,
-    history: bool = False,
-):
-    outout = np.zeros(iteration)
-    outin = np.zeros(iteration)
-    inout = np.zeros(iteration)
-    inin = np.zeros(iteration)
-
-    soutsum, sinsum = np.sum(sout), np.sum(sin)
-    toutsum, tinsum = np.sum(tout), np.sum(tin)
-    sout2sum = np.sum(sout**2)
-    sin2sum = np.sum(sin**2)
-    tout2sum = np.sum(tout**2)
-    tin2sum = np.sum(tin**2)
-
-    nedge = len(tnode)
-    hist_row = iteration * nattempts if history else 1
-
-    rewire_history = np.zeros((hist_row, 3), dtype=np.int_)
-    count = 0
-
-    for n in range(iteration):
-        for _ in range(nattempts):
-            e1 = int(np.floor(np.random.random() * nedge))
-            e2 = int(np.floor(np.random.random() * nedge))
-
-            while e1 == e2:
-                e2 = int(np.floor(np.random.random() * nedge))
-
-            if history:
-                rewire_history[count, :2] = [e1, e2]
-
-            s1, s2 = index_s[e1], index_s[e2]
-            t1, t2 = index_t[e1], index_t[e2]
-
-            if eta[s1, t2] * eta[s2, t1] < eta[s1, t1] * eta[s2, t2]:
-                ratio = eta[s1, t2] * eta[s2, t1] / (eta[s1, t1] * eta[s2, t2])
-            else:
-                ratio = 1
-
-            u = np.random.random()
-            if u <= ratio:
-                index_t[e1], index_t[e2] = index_t[e2], index_t[e1]
-                tnode[e1], tnode[e2] = tnode[e2], tnode[e1]
-                tout[e1], tout[e2] = tout[e2], tout[e1]
-                tin[e1], tin[e2] = tin[e2], tin[e1]
-
-                if history:
-                    rewire_history[count, 2] = 1
-
-            count += 1
-
-        outout[n] = compute_correlation(
-            sout, tout, soutsum, toutsum, sout2sum, tout2sum
-        )
-        outin[n] = compute_correlation(sout, tin, soutsum, tinsum, sout2sum, tin2sum)
-        inout[n] = compute_correlation(sin, tout, sinsum, toutsum, sin2sum, tout2sum)
-        inin[n] = compute_correlation(sin, tin, sinsum, tinsum, sin2sum, tin2sum)
-
-    return tnode, outout, outin, inout, inin, rewire_history
 
 
 # Compute the standard deviation of a vector j with probability vector q
@@ -504,7 +425,7 @@ def dprewire_directed(
     nattempts: int,
     history: bool,
     eta: DataFrame,
-    fun: str,
+    random_seed: int,
 ):
     """
     Rewire an unweighted directed network towards target assortativity
@@ -558,13 +479,7 @@ def dprewire_directed(
     tout = tout.astype(np.float64)
     tin = tin.astype(np.float64)
     eta_array = np.array(eta, dtype=np.float64)
-    if fun == "py":
-        rewire_function = dprewire_directed_py
-    elif fun == "cy":
-        rewire_function = dprewire_directed_cy
-    else:
-        rewire_function = dprewire_directed_cpp_wrapper
-    tnodes, outout, outin, inout, inin, rewire_history = rewire_function(
+    tnodes, outout, outin, inout, inin, rewire_history = dprewire_directed_cpp_wrapper(
         iteration=iteration,
         nattempts=nattempts,
         tnode=tnodes,
@@ -576,6 +491,7 @@ def dprewire_directed(
         index_t=tindex,
         eta=eta_array,
         history=history,
+        random_seed=random_seed,
     )
     del sout, sin, tout, tin, sindex, tindex, eta, eta_array
     assortcoef = pd.DataFrame(
@@ -704,6 +620,7 @@ def dprewire(
     cvxpy_solver: str = "ECOS",
     eta: Optional[DataFrame] = None,
     fun: str = "py",
+    random_seed: Optional[int] = None,
     **kwargs,
 ):
     """
@@ -740,12 +657,24 @@ def dprewire(
         undirected networks, the element eta.loc['i', 'j']
         representing the proportion of edges between nodes with degree
         i and j.
+    random_seed (Optional[int]):
+        Random seed for the C++ implementation.
     **kwargs: Additional keyword arguments to be passed to cvxpy when solving
         the optimization problem.
         See https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
         for details.
     """
     netwk = netwk.copy()
+    if random_seed is None:
+        random_seed = int.from_bytes(
+            os.urandom(4), byteorder=sys.byteorder, signed=False
+        )
+    else:
+        random_seed = int(random_seed)
+        if random_seed < 0 or random_seed > 4294967295:
+            raise ValueError(
+                "random_seed must be in the range of a 32-bit unsigned integer (0 to 4294967295)."
+            )
     if netwk.weighted:
         raise ValueError("The network must be unweighted.")
     check_target_assortcoef(netwk, target_assortcoef)
@@ -767,7 +696,7 @@ def dprewire(
             nattempts=nattempts,
             history=history,
             eta=eta,
-            fun=fun,
+            random_seed=random_seed,
         )
     else:
         if eta is None:

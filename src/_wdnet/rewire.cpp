@@ -3,7 +3,19 @@
 #include <algorithm>
 #include <numeric>
 #include <random>
+#include <cstdint>
 
+/**
+ * @brief Compute the correlation between two vectors.
+ * 
+ * @param x Vector 1.
+ * @param y Vector 2.
+ * @param xsum Sum of vector 1.
+ * @param ysum Sum of vector 2.
+ * @param x2sum Sum of squares of vector 1.
+ * @param y2sum Sum of squares of vector 2.
+ * @return double 
+ */
 double compute_correlation(
     const std::vector<double> &x,
     const std::vector<double> &y,
@@ -26,6 +38,29 @@ double compute_correlation(
     return numerator / denominator;
 }
 
+/**
+ * @brief Rewire a directed network towards a given eta.
+ *
+ * @param iteration Number of iterations. Each iteration consists of
+ * nattempts attempts.
+ * @param nattempts Number of attempts per iteration.
+ * @param tnode Vector of target nodes; its order will be modified in
+ * the rewiring process.
+ * @param sout Vector of out-strength of source nodes.
+ * @param sin Vector of in-strength of source nodes.
+ * @param tout Vector of out-strength of target nodes.
+ * @param tin Vector of in-strength of target nodes.
+ * @param index_s Vector of indices of source nodes.
+ * @param index_t Vector of indices of target nodes.
+ * @param eta Matrix of eta values.
+ * @param history Whether to record the rewiring history.
+ * @param rewire_history Rewiring history.
+ * @param outout Out-out assortativity coefficient after each
+ * iteration.
+ * @param outin Out-in assortativity coefficient after each iteration.
+ * @param inout In-out assortativity coefficient after each iteration.
+ * @param inin In-in assortativity coefficient after each iteration.
+*/
 void dprewire_directed_cpp(
     const int iteration,
     const int nattempts,
@@ -39,6 +74,7 @@ void dprewire_directed_cpp(
     const std::vector<std::vector<double>> &eta,
     const bool history,
     std::vector<std::vector<int>> &rewire_history,
+    const uint32_t random_seed,
     std::vector<double> &outout,
     std::vector<double> &outin,
     std::vector<double> &inout,
@@ -63,9 +99,8 @@ void dprewire_directed_cpp(
 
     int nedge = tnode.size();
 
-    // unsigned int seed = 42;
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    // std::random_device rd;
+    std::mt19937 gen(random_seed);
     std::uniform_real_distribution<> dis_nedge(0, nedge);
     std::uniform_real_distribution<> dis_unit(0, 1);
 

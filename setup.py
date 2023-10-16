@@ -3,16 +3,11 @@ from Cython.Build import cythonize
 import numpy as np
 
 ext_data = {
-    "wdnet.rewire.unw_cy": {
+    "wdnet._wrapper": {
         "sources": [
-            "src/wdnet/rewire/unw_cy.pyx",
+            "src/wdnet/_wrapper.pyx",
             "src/_wdnet/rewire.cpp",
-        ],
-        "language": "c++",
-    },
-    "wdnet._utils": {
-        "sources": [
-            "src/wdnet/_utils.pyx",
+            "src/_wdnet/utils.cpp",
         ],
         "language": "c++",
     },

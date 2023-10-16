@@ -6,6 +6,5 @@ import wdnet.rewire as rewire
 
 del _hello
 del wdnet_class
-del _utils
 
 __all__ = ["WDNet", "hello", "rewire"]

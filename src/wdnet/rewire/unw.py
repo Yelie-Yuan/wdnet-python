@@ -5,12 +5,11 @@ import cvxpy as cp
 import sys
 import os
 import warnings
-from typing import List, Tuple, Dict, Optional, Union, Callable
+from typing import List, Dict, Optional, Union, Callable
 from pandas import DataFrame
-from math import sqrt
 from ..wdnet_class import WDNet
-from .unw_cy import dprewire_directed_cpp_wrapper
-from .unw_cy import dprewire_undirected_cpp_wrapper
+from .._wrapper import dprewire_directed_cpp_wrapper
+from .._wrapper import dprewire_undirected_cpp_wrapper
 
 
 # Compute the standard deviation of a vector j with probability vector q

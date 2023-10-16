@@ -9,7 +9,7 @@ from libc.stdint cimport uint32_t
 cnp.import_array()
 
 # Declare the C++ function
-cdef extern from "../../_wdnet/rewire.h":
+cdef extern from "../_wdnet/rewire.h":
     void dprewire_directed_cpp(
         const int iteration, 
         const int nattempts, 
@@ -87,7 +87,8 @@ def dprewire_directed_cpp_wrapper(
 
     return py_tnode, py_outout, py_outin, py_inout, py_inin, py_rewire_history
 
-cdef extern from "../../_wdnet/rewire.h":
+
+cdef extern from "../_wdnet/rewire.h":
     void dprewire_undirected_cpp(
         const int iteration,
         const int nattempts,
@@ -150,3 +151,39 @@ def dprewire_undirected_cpp_wrapper(
     py_rewire_history = np.array(c_rewire_history, dtype=np.int_)
     
     return py_node1, py_node2, py_rho, py_rewire_history
+
+
+cdef extern from "../_wdnet/utils.h":
+    void node_strength_cpp(
+        const vector[int] &snode,
+        const vector[int] &tnode,
+        const vector[double] &edgeweight,
+        const int nnode,
+        vector[double] &outs,
+        vector[double] &ins)
+
+def node_strength_cpp_wrapper(
+        cnp.ndarray[cnp.int_t, ndim=2] edgelist,
+        cnp.ndarray[cnp.float64_t, ndim=1] edgeweight,
+        int nnode):
+    cdef:
+        vector[int] c_snode = edgelist[:, 0].tolist()
+        vector[int] c_tnode = edgelist[:, 1].tolist()
+        vector[double] c_edgeweight = edgeweight.tolist()
+        vector[double] c_outs = vector[double](nnode, 0)
+        vector[double] c_ins = vector[double](nnode, 0)
+    
+    # Call the C++ function
+    node_strength_cpp(
+        c_snode,
+        c_tnode,
+        c_edgeweight,
+        nnode,
+        c_outs,
+        c_ins
+    )
+
+    py_outs = np.array(c_outs, dtype=np.float64)
+    py_ins = np.array(c_ins, dtype=np.float64)
+
+    return py_outs, py_ins

@@ -4,8 +4,7 @@ from igraph import Graph
 from copy import deepcopy
 import numpy as np
 
-# import warnings
-from ._utils import node_strength_cy
+from ._wrapper import node_strength_cpp_wrapper
 
 
 def weighted_cor(x: np.ndarray, y: np.ndarray, w: np.ndarray) -> Union[float, None]:
@@ -60,11 +59,10 @@ def is_WDNet(netwk: "WDNet") -> bool:
         node_attr=netwk.node_attr,
     )
     # Check if the node strengths (or degrees) are consistent with edgelist and edgeweight
-    outs, ins = node_strength_cy(
+    outs, ins = node_strength_cpp_wrapper(
         edgelist=netwk.edgelist,
         edgeweight=netwk.edge_attr["weight"].to_numpy(dtype=np.float64),
         nnode=nnode,
-        nedge=nedge,
     )
     if netwk.directed:
         assert np.allclose(outs, netwk.node_attr["outs"].to_numpy(dtype=np.float64))
@@ -188,8 +186,8 @@ class WDNet:
             self.edge_attr = edge_attr.combine_first(self.edge_attr)
 
         # Compute node strengths (or degrees) and store them in node_attr
-        outs, ins = node_strength_cy(
-            self.edgelist, edgeweight.astype(np.float64), nnode, nedge
+        outs, ins = node_strength_cpp_wrapper(
+            self.edgelist, edgeweight.astype(np.float64), nnode
         )
         if not self.weighted:
             outs = outs.astype(np.int_)
@@ -216,7 +214,7 @@ class WDNet:
 
     def assortcoef(self) -> Union[Dict[str, Union[float, None]], Union[float, None]]:
         """
-        Calculate the assortativity coefficient of the network.
+        Compute the assortativity coefficient of the network.
 
         Returns:
         -------

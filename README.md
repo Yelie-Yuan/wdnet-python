@@ -26,7 +26,7 @@ This package is under development.
 - [x] Assortativity coefficient; `assortcoef()`
 - [ ] Centrality measures
 - [ ] Clustering coefficient
-- [ ] Network rewiring
+- [x] Network rewiring
 - [x] Assortativity coefficient range `dprewire_range()`
 - [ ] PA network generation; `rpanet()`
   - [ ] Binary method

@@ -10,79 +10,7 @@ from pandas import DataFrame
 from math import sqrt
 from ..wdnet_class import WDNet
 from .unw_cy import dprewire_directed_cpp_wrapper
-
-
-def dprewire_undirected_py(
-    iteration: int,
-    nattempts: int,
-    node1: np.ndarray,
-    node2: np.ndarray,
-    degree1: np.ndarray,
-    degree2: np.ndarray,
-    index1: np.ndarray,
-    index2: np.ndarray,
-    eta: np.ndarray,
-    history: bool = False,
-):
-    rho = np.zeros(iteration, dtype=np.float64)
-    nedge = index1.shape[0]
-    count = 0
-
-    hist_row = iteration * nattempts if history else 1
-    rewire_history = np.zeros((hist_row, 4), dtype=np.int_)
-
-    for n in range(iteration):
-        for _ in range(nattempts):
-            e1 = int(np.floor(np.random.random() * nedge))
-            e2 = int(np.floor(np.random.random() * nedge))
-
-            while e1 == e2:
-                e2 = int(np.floor(np.random.random() * nedge))
-
-            if history:
-                rewire_history[count, :2] = [e1, e2]
-
-            s1, s2 = index1[e1], index1[e2]
-            t1, t2 = index2[e1], index2[e2]
-
-            v = np.random.random()
-            u = np.random.random()
-
-            if v < 0.5:
-                if eta[s1, t2] * eta[s2, t1] < eta[s1, t1] * eta[s2, t2]:
-                    ratio = eta[s1, t2] * eta[s2, t1] / (eta[s1, t1] * eta[s2, t2])
-                else:
-                    ratio = 1
-
-                if u <= ratio:
-                    if history:
-                        rewire_history[count, 3] = 1
-                    index2[e1], index2[e2] = index2[e2], index2[e1]
-                    node2[e1], node2[e2] = node2[e2], node2[e1]
-                    degree2[e1], degree2[e2] = degree2[e2], degree2[e1]
-                    degree1[e1 + nedge], degree1[e2 + nedge] = (
-                        degree1[e2 + nedge],
-                        degree1[e1 + nedge],
-                    )
-            else:
-                if history:
-                    rewire_history[count, 2] = 1
-                if eta[s1, s2] * eta[t1, t2] < eta[s1, t1] * eta[s2, t2]:
-                    ratio = eta[s1, s2] * eta[t1, t2] / (eta[s1, t1] * eta[s2, t2])
-                else:
-                    ratio = 1
-                if u <= ratio:
-                    index1[e2], index2[e1] = index2[e1], index1[e2]
-                    node1[e2], node2[e1] = node2[e1], node1[e2]
-                    degree1[e2], degree2[e1] = degree2[e1], degree1[e2]
-                    degree1[e1 + nedge], degree2[e2 + nedge] = (
-                        degree2[e2 + nedge],
-                        degree1[e1 + nedge],
-                    )
-            count += 1
-
-        rho[n] = np.corrcoef(degree1, degree2)[0, 1]
-    return node1, node2, rho, rewire_history
+from .unw_cy import dprewire_undirected_cpp_wrapper
 
 
 # Compute the standard deviation of a vector j with probability vector q
@@ -235,23 +163,22 @@ def get_eta_directed(
 
     Parameters
     ----------
-    netwk (WDNet): An instance of the WDNet class.
-
-    target_assortcoef (Optional[Dict[str, float]]): Target assortativity coefficient(s).
-        This should be a dictionary with keys 'outout', 'outin', 'inout',
-        and 'inin' corresponding to the four types of assortativity
-        coefficients.
-
-    eta_obj (Optional[Callable]): A objective function that takes eta
-        (a numpy array) as input and returns a scalar value. It will be
-        minimized when solving for an appropriate eta.
-        Defaults to 0 (i.e., no objective function).
-
-    which_range (Optional[str]): Which range of assortativity
-        coefficients to compute.
-
-    **kwargs: Additional keyword arguments to be passed to cvxpy when solving
-        the optimization problem.
+    netwk: WDNet
+        An instance of the WDNet class.
+    target_assortcoef: Optional[Dict[str, float]]
+        Target assortativity coefficient(s). This should be a
+        dictionary with keys 'outout', 'outin', 'inout', and 'inin'
+        corresponding to the four types of assortativity coefficients.
+    eta_obj: Optional[Callable]
+        A objective function that takes eta (a numpy array) as input
+        and returns a scalar value. It will be minimized when solving
+        for an appropriate eta. Defaults to 0 (i.e., no objective
+        function).
+    which_range: Optional[str]
+        Which range of assortativity coefficients to compute.
+    **kwargs:
+        Additional keyword arguments to be passed to cvxpy when
+        solving the optimization problem.
     """
     dist = get_dist_directed(netwk)
     m = len(dist["dout"])
@@ -350,9 +277,9 @@ def get_eta_directed(
 
 # Construct an eta for undirected networks
 def get_eta_undirected(
-    netwk,
-    target_assortcoef,
-    eta_obj,
+    netwk: WDNet,
+    target_assortcoef: Optional[float],
+    eta_obj: Optional[Callable],
     **kwargs,
 ):
     """
@@ -360,21 +287,21 @@ def get_eta_undirected(
 
     Parameters
     ----------
-    netwk (WDNet): An instance of the WDNet class.
-
-    target_assortcoef (Optional[float]): Target assortativity coefficient.
-        This should be a single float value.
-
-    eta_obj (Optional[Callable]): A objective function that takes eta
-        (a numpy array) as input and returns a scalar value. It will be
-        minimized when solving for an appropriate eta.
-        Defaults to 0 (i.e., no objective function).
-
-    which_range (Optional[str]): Which range of assortativity
-        coefficients to compute.
-
-    **kwargs: Additional keyword arguments to be passed to cvxpy when solving
-        the optimization problem.
+    netwk: WDNet
+        An instance of the WDNet class.
+    target_assortcoef: Optional[float]
+        Target assortativity coefficient. This should be a single
+        float value.
+    eta_obj: Optional[Callable]
+        A objective function that takes eta (a numpy array) as input
+        and returns a scalar value. It will be minimized when solving
+        for an appropriate eta. Defaults to 0 (i.e., no objective
+        function).
+    which_range: Optional[str]
+        Which range of assortativity coefficients to compute.
+    **kwargs:
+        Additional keyword arguments to be passed to cvxpy when
+        solving the optimization problem.
     """
     dist = get_dist_undirected(netwk)
     m = len(dist["d"])
@@ -433,26 +360,24 @@ def dprewire_directed(
 
     Parameters
     ----------
-    netwk (WDNet): An instance of the WDNet class.
-
-    iteration (int): Number of iterations to run the rewiring algorithm.
-        Each iteration consists of nattempts rewiring attempts.
-
-    nattempts (int): Number of rewiring attempts per iteration.
-
-    history (bool): If True, the rewiring history is returned.
-
-    eta (DataFrame): A pandas DataFrame representing the proportion of
-        edges emerging from nodes with out-degree i, in-degree j, and
+    netwk: WDNet
+        An instance of the WDNet class.
+    iteration: int
+        Number of iterations to run the rewiring algorithm. Each
+        iteration consists of nattempts rewiring attempts.
+    nattempts: int
+        Number of rewiring attempts per iteration.
+    history: bool
+        If True, the rewiring history is returned.
+    eta: DataFrame
+        A pandas DataFrame representing the proportion of edges
+        emerging from nodes with out-degree i, in-degree j, and
         pointing to nodes with out-degree k, in-degree l.
 
     Returns
     -------
     The rewired network (WDNet), the assortativity coefficients after
     each iteration, and the rewiring history (if history is True).
-
-    history (Optional[DataFrame]): A pandas DataFrame representing the
-        rewiring history.
     """
     initial_coef = netwk.assortcoef()
     snodes, tnodes = netwk.edgelist.T
@@ -527,7 +452,7 @@ def dprewire_undirected(
     nattempts: int,
     history: bool,
     eta: DataFrame,
-    fun: str,
+    random_seed: int,
 ):
     """
     Rewire an unweighted undirected network towards target
@@ -535,18 +460,21 @@ def dprewire_undirected(
 
     Parameters
     ----------
-    netwk : WDNet
+    netwk: WDNet
         An instance of the WDNet class.
-    iteration : int
+    iteration: int
         Number of iterations to run the rewiring algorithm. Each
         iteration consists of nattempts rewiring attempts.
-    nattempts : int
+    nattempts: int
         Number of rewiring attempts per iteration.
-    history : bool
+    history: bool
         If True, the rewiring history is returned.
-    eta : DataFrame
+    eta: DataFrame
         A pandas DataFrame representing the proportion of edges
         between nodes with degree i and nodes with degree j.
+    random_seed: int
+        Random seed for the C++ implementation.
+
     Returns
     -------
     The rewired network; the assortativity coefficients after each
@@ -569,13 +497,7 @@ def dprewire_undirected(
     degree2 = degree2.astype(np.float64)
     eta_array = np.array(eta, dtype=np.float64)
 
-    rewire_function = dprewire_undirected_py
-    if fun == "py":
-        rewire_function = dprewire_undirected_py
-    # else:
-    #     rewire_function = dprewire_undirected_cy
-
-    node1, node2, assort_trace, rewire_history = rewire_function(
+    node1, node2, assort_trace, rewire_history = dprewire_undirected_cpp_wrapper(
         iteration=iteration,
         nattempts=nattempts,
         node1=node1,
@@ -586,6 +508,7 @@ def dprewire_undirected(
         index2=index2,
         eta=eta_array,
         history=history,
+        random_seed=random_seed,
     )
     del degree1, degree2, index1, index2, eta, eta_array
 
@@ -602,7 +525,7 @@ def dprewire_undirected(
     else:
         rewire_history = pd.DataFrame(
             rewire_history,
-            columns=["edge1", "edge2", "accepted", "scenario"],
+            columns=["edge1", "edge2", "scenario", "accepted"],
         )
         rewire_history.index.name = "attempt"
 
@@ -612,14 +535,13 @@ def dprewire_undirected(
 # Main function for degree preserving rewiring
 def dprewire(
     netwk: WDNet,
-    target_assortcoef: Union[Dict[str, float], float],
+    target_assortcoef: Optional[Union[Dict[str, float], float]],
     iteration: int = 200,
     nattempts: Optional[int] = None,
     history: bool = False,
     eta_obj: Optional[Callable] = lambda eta: 0,
     cvxpy_solver: str = "ECOS",
     eta: Optional[DataFrame] = None,
-    fun: str = "py",
     random_seed: Optional[int] = None,
     **kwargs,
 ):
@@ -629,40 +551,54 @@ def dprewire(
 
     Parameters
     ----------
-    netwk (WDNet): An instance of the WDNet class.
-    target_assortcoef (Optional[Union[Dict[str, float], float]]): Target assortativity coefficient(s).
-        For directed networks, this should be a dictionary with keys
-        'outout', 'outin', 'inout', and 'inin' corresponding to the
-        four types of assortativity coefficients. For undirected
-        networks, this should be a single float value.
-    iteration (int): Number of iterations to run the rewiring algorithm.
-        Each iteration consists of nattempts rewiring attempts.
-    nattempts (Optional[int]): Number of rewiring attempts per iteration. If None,
-        nattempts is set to the number of edges in the network.
-    history (bool): If True, the rewiring history is returned.
-    eta_obj (Optional[Callable]): A objective function that takes eta
-        (a numpy array) as input and returns a scalar value. It will be
-        minimized when solving for an appropriate eta.
-        Defaults to 0 (i.e., no objective function).
-    cvxpy_solver (str): The solver to use for solving the optimization
-        problem. Defaults to 'ECOS'.
-    eta (Optional[DataFrame]): A pandas DataFrame or None. By default,
-        eta is computed with the given network, the target
-        assortativity coefficient(s), and the given eta_obj function.
-        If eta is provided, the target assortativity coefficient(s)
-        and eta_obj function are ignored. For directed networks, the
-        element eta.loc['i-j', 'k-l'] representing the proportion of
-        edges emerging from nodes with out-degree i, in-degree j, and
-        pointing to nodes with out-degree k, in-degree l. For
-        undirected networks, the element eta.loc['i', 'j']
-        representing the proportion of edges between nodes with degree
-        i and j.
-    random_seed (Optional[int]):
+    netwk: WDNet
+        An instance of the WDNet class.
+    target_assortcoef: Optional[Union[Dict[str, float], float]])
+        Target assortativity coefficient(s). For directed networks,
+        this should be a dictionary with keys 'outout', 'outin',
+        'inout', and 'inin' corresponding to the four types of
+        assortativity coefficients. For undirected networks, this
+        should be a single float value. It will be ignored if eta is
+        provided.
+    iteration: int
+        Number of iterations to run the rewiring algorithm. Each
+        iteration consists of nattempts rewiring attempts.
+    nattempts: Optional[int]
+        Number of rewiring attempts per iteration. If None, nattempts
+        is set to the number of edges in the network.
+    history: bool
+        If True, the rewiring history is returned.
+    eta_obj: Optional[Callable]
+        A objective function that takes eta (a numpy array) as input
+        and returns a scalar value. It will be minimized when solving
+        for an appropriate eta. Defaults to 0 (i.e., no objective
+        function).
+    cvxpy_solver: str
+        The solver to use for solving the optimization problem.
+        Defaults to 'ECOS'.
+    eta: Optional[DataFrame]
+        A pandas DataFrame or None. By default, eta is computed with
+        the given network, the target assortativity coefficient(s),
+        and the given eta_obj function. If eta is provided, the target
+        assortativity coefficient(s) and eta_obj function are ignored.
+        For directed networks, the element eta.loc['i-j', 'k-l']
+        representing the proportion of edges emerging from nodes with
+        out-degree i, in-degree j, and pointing to nodes with
+        out-degree k, in-degree l. For undirected networks, the
+        element eta.loc['i', 'j'] representing the proportion of edges
+        between nodes with degree i and j.
+    random_seed: Optional[int]
         Random seed for the C++ implementation.
-    **kwargs: Additional keyword arguments to be passed to cvxpy when solving
-        the optimization problem.
-        See https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
+    **kwargs:
+        Additional keyword arguments to be passed to cvxpy when
+        solving the optimization problem. See
+        https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
         for details.
+
+    Returns
+    -------
+    The rewired network (WDNet), the assortativity coefficients after
+    each iteration, and the rewiring history (if history is True).
     """
     netwk = netwk.copy()
     if random_seed is None:
@@ -713,7 +649,7 @@ def dprewire(
             nattempts=nattempts,
             history=history,
             eta=eta,
-            fun=fun,
+            random_seed=random_seed,
         )
 
 
@@ -731,26 +667,32 @@ def dprewire_range(
 
     Parameters
     ----------
-    netwk (WDNet): An instance of the WDNet class.
-
-    which_range (Optional[str]): Which range of assortativity
-        coefficients to compute. For directed networks, this should be
-        one of 'outout', 'outin', 'inout', and 'inin'. For undirected
-        networks, this should be None.
-
-    target_assortcoef (Optional[Union[Dict[str, float], float]]): Target
-        assortativity coefficient(s). For directed networks, this should be a
-        dictionary with keys 'outout', 'outin', 'inout', and 'inin'
-        corresponding to the four types of assortativity
-        coefficients. For undirected networks, this should be a None.
-
-    cvxpy_solver (str): The solver to use for solving the optimization
-        problem. Defaults to 'ECOS'.
-
-    **kwargs: Additional keyword arguments to be passed to cvxpy when solving
-        the optimization problem.
-        See https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
+    netwk: WDNet
+        An instance of the WDNet class.
+    which_range: Optional[str]
+        Which range of assortativity coefficients to compute. For
+        directed networks, this should be one of 'outout', 'outin',
+        'inout', and 'inin'. For undirected networks, this should be
+        None.
+    target_assortcoef: Optional[Union[Dict[str, float], float]]
+        Target assortativity coefficient(s). For directed networks,
+        this should be a dictionary with keys 'outout', 'outin',
+        'inout', and 'inin' corresponding to the four types of
+        assortativity coefficients. For undirected networks, this
+        should be a None.
+    cvxpy_solver: str
+        The solver to use for solving the optimization problem.
+        Defaults to 'ECOS'.
+    **kwargs:
+        Additional keyword arguments to be passed to cvxpy when
+        solving the optimization problem. See
+        https://www.cvxpy.org/tutorial/advanced/index.html#setting-solver-options
         for details.
+
+    Returns
+    -------
+    The range of the assortativity coefficient specified by
+    which_range.
     """
     if which_range is None and netwk.directed:
         raise ValueError("which_range must be specified for directed networks.")

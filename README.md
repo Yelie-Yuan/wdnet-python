@@ -79,7 +79,6 @@ This package is under development.
 ## Example Usage
 
 ```python
-from numpy import random as nprandom
 from igraph import Graph
 from wdnet import WDNet, rewire
 import matplotlib.pyplot as plt
@@ -97,9 +96,10 @@ netwk.to_igraph()
 # rewire.dprewire(net) # under development
 rewire.dprewire_range(netwk, which_range="inin")
 
-nprandom.seed(123) # for wdnet
 _, assort_trace, _ = rewire.dprewire(
-    netwk, target_assortcoef={"outout": 0.2, "outin": 0.2, "inout": -0.2, "inin": -0.2}
+    netwk, 
+    target_assortcoef={"outout": 0.2, "outin": 0.2, "inout": -0.2, "inin": -0.2},
+    random_seed=123 # for reproducibility
 )
 
 _, axs = plt.subplots(2, 2, figsize=(10, 10))
